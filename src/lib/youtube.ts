@@ -18,6 +18,8 @@ export class YouTubeService {
 
   constructor() {
     this.apiKey = process.env.YOUTUBE_API_KEY || ''
+    console.log('YouTube API Key available:', !!this.apiKey)
+    console.log('YouTube API Key length:', this.apiKey?.length || 0)
   }
 
   static getInstance(): YouTubeService {

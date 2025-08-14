@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import Head from 'next/head'
 import { useQuery } from '@tanstack/react-query'
-import { TrendingUp, Eye, Heart } from 'lucide-react'
+import { TrendingUp, Eye, Heart, Play } from 'lucide-react'
 import { format } from 'date-fns'
 import type { TrendingVideo } from '@/types'
+import VideoModal from '@/components/VideoModal'
 
 export default function Trending() {
   const [region, setRegion] = useState('KR')
+  const [selectedVideo, setSelectedVideo] = useState<{id: string, title: string} | null>(null)
 
   const { data: trendingVideos, isLoading, error } = useQuery({
     queryKey: ['trending', region],
@@ -29,6 +31,10 @@ export default function Trending() {
       return `${(num / 1000).toFixed(1)}K`
     }
     return num.toString()
+  }
+
+  const handleVideoClick = (videoId: string, title: string) => {
+    setSelectedVideo({ id: videoId, title })
   }
 
   return (
@@ -71,7 +77,7 @@ export default function Trending() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="flex flex-col sm:flex-row bg-white rounded-lg shadow animate-pulse p-4">
                 <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
-                  <div className="bg-gray-300 w-full sm:w-48 h-48 sm:h-36 rounded-lg"></div>
+                  <div className="bg-gray-300 w-full sm:w-32 h-32 sm:h-24 rounded-lg"></div>
                 </div>
                 <div className="flex-1">
                   <div className="h-4 bg-gray-300 rounded mb-2"></div>
@@ -96,23 +102,24 @@ export default function Trending() {
               <div key={video.id} className="flex flex-col sm:flex-row bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
                 {/* Left: Thumbnail with Rank */}
                 <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
-                  <a
-                    href={`https://www.youtube.com/watch?v=${video.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block relative group"
+                  <button
+                    onClick={() => handleVideoClick(video.id, video.title)}
+                    className="block relative group focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                   >
                     {video.thumbnailUrl && (
                       <img
                         src={video.thumbnailUrl}
                         alt={video.title}
-                        className="w-full sm:w-48 h-48 sm:h-36 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                        className="w-full sm:w-32 h-32 sm:h-24 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
                       />
                     )}
                     <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm font-semibold">
                       #{video.rankPosition}
                     </div>
-                  </a>
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                      <Play className="h-8 w-8 text-white fill-current" />
+                    </div>
+                  </button>
                 </div>
                 
                 {/* Right: Video Info */}
@@ -205,6 +212,16 @@ export default function Trending() {
           </div>
         )}
       </div>
+
+      {/* Video Modal */}
+      {selectedVideo && (
+        <VideoModal
+          isOpen={!!selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+          videoId={selectedVideo.id}
+          title={selectedVideo.title}
+        />
+      )}
     </>
   )
 }

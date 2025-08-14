@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useQuery } from '@tanstack/react-query'
-import { Search as SearchIcon, Eye, Heart, Users, Clock, ExternalLink } from 'lucide-react'
+import { Search as SearchIcon, Eye, Heart, Users, Clock, Play } from 'lucide-react'
 import { format } from 'date-fns'
 import type { SearchResult } from '@/types'
+import VideoModal from '@/components/VideoModal'
 
 export default function Search() {
   const [inputQuery, setInputQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'videos' | 'channels'>('videos')
   const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [selectedVideo, setSelectedVideo] = useState<{id: string, title: string} | null>(null)
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -62,6 +64,10 @@ export default function Search() {
   const handleRecentSearch = (query: string) => {
     setInputQuery(query)
     setSearchQuery(query)
+  }
+
+  const handleVideoClick = (videoId: string, title: string) => {
+    setSelectedVideo({ id: videoId, title })
   }
 
   return (
@@ -163,7 +169,7 @@ export default function Search() {
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="flex flex-col sm:flex-row bg-white rounded-lg shadow animate-pulse p-4">
                     <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
-                      <div className="bg-gray-300 w-full sm:w-48 h-48 sm:h-36 rounded-lg"></div>
+                      <div className="bg-gray-300 w-full sm:w-32 h-32 sm:h-24 rounded-lg"></div>
                     </div>
                     <div className="flex-1">
                       <div className="h-4 bg-gray-300 rounded mb-2"></div>
@@ -194,21 +200,19 @@ export default function Search() {
                   <div key={video.id} className="flex flex-col sm:flex-row bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
                     {/* Left: Thumbnail */}
                     <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
-                      <a
-                        href={`https://www.youtube.com/watch?v=${video.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block relative group"
+                      <button
+                        onClick={() => handleVideoClick(video.id, video.title)}
+                        className="block relative group focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
                       >
                         <img
                           src={video.thumbnailUrl}
                           alt={video.title}
-                          className="w-full sm:w-48 h-48 sm:h-36 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                          className="w-full sm:w-32 h-32 sm:h-24 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                          <ExternalLink className="h-6 w-6 text-white" />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                          <Play className="h-8 w-8 text-white fill-current" />
                         </div>
-                      </a>
+                      </button>
                     </div>
                     
                     {/* Right: Video Info */}
@@ -367,6 +371,16 @@ export default function Search() {
           </div>
         )}
       </div>
+
+      {/* Video Modal */}
+      {selectedVideo && (
+        <VideoModal
+          isOpen={!!selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+          videoId={selectedVideo.id}
+          title={selectedVideo.title}
+        />
+      )}
     </>
   )
 }
