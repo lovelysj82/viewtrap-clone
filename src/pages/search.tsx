@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Search as SearchIcon, Eye, Heart, Users, Calendar, Clock, ExternalLink } from 'lucide-react'
 import { format } from 'date-fns'
 import type { SearchResult } from '@/types'
