@@ -1,4 +1,5 @@
 import Head from 'next/head'
+import Link from 'next/link'
 import { TrendingUp, Youtube, Brain, BarChart3 } from 'lucide-react'
 
 export default function Home() {
@@ -60,12 +61,37 @@ export default function Home() {
 
           {/* CTA Section */}
           <div className="text-center">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors">
+            <Link
+              href="/trending"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors"
+            >
               무료로 시작하기
-            </button>
+            </Link>
             <p className="text-gray-500 mt-4">
               회원가입 없이 바로 시작할 수 있습니다
             </p>
+            
+            {/* Quick Access Buttons */}
+            <div className="flex justify-center space-x-4 mt-8">
+              <Link
+                href="/trending"
+                className="bg-white text-blue-600 border border-blue-600 hover:bg-blue-50 font-medium py-2 px-6 rounded-lg transition-colors"
+              >
+                🔥 트렌딩 보기
+              </Link>
+              <Link
+                href="/search"
+                className="bg-white text-green-600 border border-green-600 hover:bg-green-50 font-medium py-2 px-6 rounded-lg transition-colors"
+              >
+                🔍 키워드 검색
+              </Link>
+              <Link
+                href="/recommendations"
+                className="bg-white text-purple-600 border border-purple-600 hover:bg-purple-50 font-medium py-2 px-6 rounded-lg transition-colors"
+              >
+                🤖 AI 추천
+              </Link>
+            </div>
           </div>
         </div>
       </main>
