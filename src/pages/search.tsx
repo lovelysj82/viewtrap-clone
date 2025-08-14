@@ -1,28 +1,45 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Head from 'next/head'
-import { useQuery } from '@tanstack/react-query'
-import { Search as SearchIcon, Eye, Heart, Users, Calendar } from 'lucide-react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { Search as SearchIcon, Eye, Heart, Users, Calendar, Clock, ExternalLink } from 'lucide-react'
 import { format } from 'date-fns'
 import type { SearchResult } from '@/types'
 
 export default function Search() {
-  const [query, setQuery] = useState('')
+  const [inputQuery, setInputQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'videos' | 'channels'>('videos')
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
+
+  // Load recent searches from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('recent-searches')
+    if (saved) {
+      setRecentSearches(JSON.parse(saved))
+    }
+  }, [])
 
   const { data: searchResults, isLoading, error } = useQuery({
-    queryKey: ['search', query],
+    queryKey: ['search', searchQuery],
     queryFn: async () => {
-      if (!query.trim()) return null
-      const response = await fetch(`/api/youtube/search?query=${encodeURIComponent(query)}&maxResults=20`)
+      if (!searchQuery.trim()) return null
+      const response = await fetch(`/api/youtube/search?query=${encodeURIComponent(searchQuery)}&maxResults=20`)
       if (!response.ok) {
         throw new Error('Failed to search')
       }
       const result = await response.json()
       return result.data as SearchResult
     },
-    enabled: !!query.trim(),
+    enabled: !!searchQuery.trim(),
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
+
+  // Save search to localStorage
+  const saveSearch = (query: string) => {
+    const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 10)
+    setRecentSearches(updated)
+    localStorage.setItem('recent-searches', JSON.stringify(updated))
+  }
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
@@ -36,7 +53,15 @@ export default function Search() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    // Query will automatically trigger due to useQuery dependency
+    if (inputQuery.trim()) {
+      setSearchQuery(inputQuery.trim())
+      saveSearch(inputQuery.trim())
+    }
+  }
+
+  const handleRecentSearch = (query: string) => {
+    setInputQuery(query)
+    setSearchQuery(query)
   }
 
   return (
@@ -62,23 +87,47 @@ export default function Search() {
             <div className="flex">
               <input
                 type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                value={inputQuery}
+                onChange={(e) => setInputQuery(e.target.value)}
                 placeholder="검색할 키워드를 입력하세요"
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button
                 type="submit"
-                className="px-6 py-3 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-8 py-3 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
               >
-                <SearchIcon className="h-5 w-5" />
+                <div className="flex items-center space-x-2">
+                  <SearchIcon className="h-5 w-5" />
+                  <span className="font-medium">검색</span>
+                </div>
               </button>
             </div>
           </form>
+
+          {/* Recent Searches */}
+          {recentSearches.length > 0 && !searchQuery && (
+            <div className="max-w-2xl mt-4">
+              <p className="text-sm text-gray-600 mb-2 flex items-center">
+                <Clock className="h-4 w-4 mr-1" />
+                최근 검색어
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {recentSearches.map((recent, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleRecentSearch(recent)}
+                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                  >
+                    {recent}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Results */}
-        {query && (
+        {searchQuery && (
           <>
             {/* Tabs */}
             <div className="mb-6">
@@ -141,51 +190,68 @@ export default function Search() {
 
             {/* Videos Tab */}
             {!isLoading && !error && activeTab === 'videos' && searchResults?.videos && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {searchResults.videos.map((video) => (
                   <div key={video.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-                    <div className="relative">
+                    <div className="relative group">
                       {video.thumbnailUrl && (
-                        <img
-                          src={video.thumbnailUrl}
-                          alt={video.title}
-                          className="w-full h-48 object-cover rounded-t-lg"
-                        />
+                        <a
+                          href={`https://www.youtube.com/watch?v=${video.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block relative"
+                        >
+                          <img
+                            src={video.thumbnailUrl}
+                            alt={video.title}
+                            className="w-full h-32 object-cover rounded-t-lg group-hover:opacity-90 transition-opacity"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-t-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                            <ExternalLink className="h-6 w-6 text-white" />
+                          </div>
+                        </a>
                       )}
                     </div>
                     
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {video.title}
-                      </h3>
+                    <div className="p-3">
+                      <a
+                        href={`https://www.youtube.com/watch?v=${video.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <h3 className="font-medium text-gray-900 mb-2 text-sm line-clamp-2 hover:text-blue-600 transition-colors">
+                          {video.title}
+                        </h3>
+                      </a>
                       
-                      <p className="text-sm text-gray-600 mb-3">
+                      <p className="text-xs text-gray-600 mb-2">
                         {video.channelTitle}
                       </p>
 
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center space-x-4">
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center space-x-3">
                           <div className="flex items-center">
-                            <Eye className="h-4 w-4 mr-1" />
+                            <Eye className="h-3 w-3 mr-1" />
                             {formatNumber(video.viewCount || 0)}
                           </div>
                           <div className="flex items-center">
-                            <Heart className="h-4 w-4 mr-1" />
+                            <Heart className="h-3 w-3 mr-1" />
                             {formatNumber(video.likeCount || 0)}
                           </div>
                         </div>
                         
                         {video.publishedAt && (
                           <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-1" />
+                            <Calendar className="h-3 w-3 mr-1" />
                             {format(new Date(video.publishedAt), 'MM/dd')}
                           </div>
                         )}
                       </div>
 
                       {video.tags && video.tags.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-1">
-                          {video.tags.slice(0, 3).map((tag, i) => (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {video.tags.slice(0, 2).map((tag, i) => (
                             <span
                               key={i}
                               className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded"
@@ -279,7 +345,7 @@ export default function Search() {
         )}
 
         {/* Search suggestions when no query */}
-        {!query && (
+        {!searchQuery && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">인기 검색어</h2>
             <div className="flex flex-wrap gap-2">
@@ -289,7 +355,7 @@ export default function Search() {
               ].map((keyword) => (
                 <button
                   key={keyword}
-                  onClick={() => setQuery(keyword)}
+                  onClick={() => handleRecentSearch(keyword)}
                   className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm transition-colors"
                 >
                   {keyword}
