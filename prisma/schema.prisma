@@ -1,0 +1,239 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  channels      Channel[]
+  searches      Search[]
+  subscriptions Subscription[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+model Channel {
+  id            String   @id @default(cuid())
+  youtubeId     String   @unique
+  title         String
+  description   String?
+  thumbnailUrl  String?
+  subscriberCount Int?
+  videoCount    Int?
+  viewCount     BigInt?
+  publishedAt   DateTime?
+  customUrl     String?
+  country       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user          User?    @relation(fields: [userId], references: [id])
+  userId        String?
+  videos        Video[]
+  analytics     ChannelAnalytics[]
+
+  @@map("channels")
+}
+
+model Video {
+  id              String   @id @default(cuid())
+  youtubeId       String   @unique
+  title           String
+  description     String?
+  thumbnailUrl    String?
+  duration        String?
+  viewCount       BigInt?
+  likeCount       Int?
+  commentCount    Int?
+  publishedAt     DateTime?
+  tags            String[]
+  categoryId      String?
+  defaultLanguage String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  channel         Channel  @relation(fields: [channelId], references: [id])
+  channelId       String
+  analytics       VideoAnalytics[]
+  recommendations Recommendation[]
+
+  @@map("videos")
+}
+
+model VideoAnalytics {
+  id              String   @id @default(cuid())
+  videoId         String
+  date            DateTime
+  viewCount       BigInt
+  likeCount       Int
+  commentCount    Int
+  averageViewDuration Float?
+  clickThroughRate Float?
+  impressions     BigInt?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  video Video @relation(fields: [videoId], references: [id])
+
+  @@unique([videoId, date])
+  @@map("video_analytics")
+}
+
+model ChannelAnalytics {
+  id                String   @id @default(cuid())
+  channelId         String
+  date              DateTime
+  subscriberCount   Int
+  viewCount         BigInt
+  videoCount        Int
+  estimatedRevenue  Float?
+  averageViewDuration Float?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  channel Channel @relation(fields: [channelId], references: [id])
+
+  @@unique([channelId, date])
+  @@map("channel_analytics")
+}
+
+model TrendingVideo {
+  id          String   @id @default(cuid())
+  youtubeId   String   @unique
+  title       String
+  channelTitle String
+  viewCount   BigInt
+  publishedAt DateTime
+  categoryId  String
+  region      String   @default("KR")
+  rankPosition Int
+  trendingDate DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([youtubeId, trendingDate, region])
+  @@map("trending_videos")
+}
+
+model Search {
+  id        String   @id @default(cuid())
+  query     String
+  results   Json?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("searches")
+}
+
+model Recommendation {
+  id              String   @id @default(cuid())
+  videoId         String
+  type            RecommendationType
+  originalText    String
+  recommendedText String
+  score           Float?
+  isApplied       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  // Relations
+  video Video @relation(fields: [videoId], references: [id])
+
+  @@map("recommendations")
+}
+
+model Subscription {
+  id        String           @id @default(cuid())
+  userId    String
+  plan      SubscriptionPlan
+  status    SubscriptionStatus
+  startDate DateTime
+  endDate   DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("subscriptions")
+}
+
+enum RecommendationType {
+  TITLE
+  THUMBNAIL
+  DESCRIPTION
+  TAGS
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+  TRIAL
+}
