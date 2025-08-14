@@ -3,14 +3,22 @@ import Link from 'next/link'
 import { Menu, X, TrendingUp, User, LogOut } from 'lucide-react'
 
 // Safely import NextAuth hooks with error handling
-let useSession: any, signIn: any, signOut: any
+interface SessionResult {
+  data: { user?: { name?: string; email?: string; image?: string } } | null
+  status: string
+}
+
+let useSession: () => SessionResult
+let signIn: () => void
+let signOut: () => void
 
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nextAuth = require('next-auth/react')
   useSession = nextAuth.useSession
   signIn = nextAuth.signIn
   signOut = nextAuth.signOut
-} catch (error) {
+} catch {
   // Fallback when NextAuth is not available
   useSession = () => ({ data: null, status: 'unauthenticated' })
   signIn = () => {}
@@ -28,7 +36,7 @@ export default function Navbar() {
     const sessionResult = useSession()
     session = sessionResult?.data || null
     status = sessionResult?.status || 'unauthenticated'
-  } catch (error) {
+  } catch {
     console.log('NextAuth not available, using fallback')
   }
 
