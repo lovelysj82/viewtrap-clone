@@ -11,6 +11,20 @@ export default function App({
 }: AppProps) {
   const [queryClient] = useState(() => new QueryClient())
 
+  // Temporarily disable SessionProvider if database issues occur
+  const useAuth = process.env.NODE_ENV !== 'production' || process.env.ENABLE_AUTH === 'true'
+
+  if (!useAuth) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
+          <Component {...pageProps} />
+        </div>
+      </QueryClientProvider>
+    )
+  }
+
   return (
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>
