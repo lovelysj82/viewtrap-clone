@@ -1,11 +1,36 @@
 import { useState } from 'react'
 import Link from 'next/link'
-import { useSession, signIn, signOut } from 'next-auth/react'
 import { Menu, X, TrendingUp, User, LogOut } from 'lucide-react'
 
+// Safely import NextAuth hooks with error handling
+let useSession: any, signIn: any, signOut: any
+
+try {
+  const nextAuth = require('next-auth/react')
+  useSession = nextAuth.useSession
+  signIn = nextAuth.signIn
+  signOut = nextAuth.signOut
+} catch (error) {
+  // Fallback when NextAuth is not available
+  useSession = () => ({ data: null, status: 'unauthenticated' })
+  signIn = () => {}
+  signOut = () => {}
+}
+
 export default function Navbar() {
-  const { data: session, status } = useSession()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  
+  // Safely use session hooks
+  let session = null
+  let status = 'unauthenticated'
+  
+  try {
+    const sessionResult = useSession()
+    session = sessionResult?.data || null
+    status = sessionResult?.status || 'unauthenticated'
+  } catch (error) {
+    console.log('NextAuth not available, using fallback')
+  }
 
   return (
     <nav className="bg-white shadow-lg sticky top-0 z-50">
