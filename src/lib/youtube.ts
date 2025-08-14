@@ -1,10 +1,16 @@
 import { google } from 'googleapis'
 import type { YouTubeChannel, YouTubeVideo, TrendingVideo } from '@/types'
 
-const youtube = google.youtube({
-  version: 'v3',
-  auth: process.env.YOUTUBE_API_KEY,
-})
+let youtube: ReturnType<typeof google.youtube> | null = null
+
+try {
+  youtube = google.youtube({
+    version: 'v3',
+    auth: process.env.YOUTUBE_API_KEY,
+  })
+} catch (error) {
+  console.error('Failed to initialize YouTube API:', error)
+}
 
 export class YouTubeService {
   private static instance: YouTubeService
@@ -22,7 +28,7 @@ export class YouTubeService {
   }
 
   async searchVideos(query: string, maxResults: number = 50): Promise<YouTubeVideo[]> {
-    if (!this.apiKey) {
+    if (!this.apiKey || !youtube) {
       console.warn('YouTube API key not available, returning mock data')
       return this.getMockVideos(query, maxResults)
     }
@@ -52,6 +58,10 @@ export class YouTubeService {
   }
 
   async getVideoDetails(videoIds: string[]): Promise<YouTubeVideo[]> {
+    if (!youtube) {
+      return []
+    }
+
     try {
       const response = await youtube.videos.list({
         part: ['snippet', 'statistics', 'contentDetails'],
@@ -82,6 +92,10 @@ export class YouTubeService {
   }
 
   async getChannelDetails(channelId: string): Promise<YouTubeChannel | null> {
+    if (!youtube) {
+      return null
+    }
+
     try {
       const response = await youtube.channels.list({
         part: ['snippet', 'statistics'],
@@ -112,6 +126,11 @@ export class YouTubeService {
   }
 
   async getTrendingVideos(regionCode: string = 'KR', maxResults: number = 50): Promise<TrendingVideo[]> {
+    if (!this.apiKey || !youtube) {
+      console.warn('YouTube API key not available, returning mock trending data')
+      return this.getMockTrendingVideos(regionCode, maxResults)
+    }
+
     try {
       const response = await youtube.videos.list({
         part: ['snippet', 'statistics'],
@@ -141,11 +160,16 @@ export class YouTubeService {
       }))
     } catch (error) {
       console.error('Error getting trending videos:', error)
-      throw new Error('Failed to get trending videos')
+      console.warn('Falling back to mock trending data')
+      return this.getMockTrendingVideos(regionCode, maxResults)
     }
   }
 
   async getChannelVideos(channelId: string, maxResults: number = 50): Promise<YouTubeVideo[]> {
+    if (!youtube) {
+      return []
+    }
+
     try {
       const response = await youtube.search.list({
         part: ['snippet'],
@@ -166,7 +190,7 @@ export class YouTubeService {
   }
 
   async searchChannels(query: string, maxResults: number = 25): Promise<YouTubeChannel[]> {
-    if (!this.apiKey) {
+    if (!this.apiKey || !youtube) {
       console.warn('YouTube API key not available, returning mock channels')
       return this.getMockChannels(query, maxResults)
     }
@@ -289,5 +313,30 @@ export class YouTubeService {
     ]
 
     return mockChannels.slice(0, maxResults)
+  }
+
+  private getMockTrendingVideos(regionCode: string, maxResults: number): TrendingVideo[] {
+    const trendingTopics = ['K-POP', '게임', '요리', 'VLOG', '리뷰', '튜토리얼', '뉴스', '음악', '예능', 'SHORTS']
+    
+    const mockTrendingVideos = trendingTopics.map((topic, index) => ({
+      id: `trending-${index + 1}`,
+      title: `인기 급상승! ${topic} 관련 영상`,
+      description: `현재 ${regionCode} 지역에서 트렌딩 중인 ${topic} 관련 영상입니다. 실제 YouTube 데이터가 아닌 모의 데이터입니다.`,
+      thumbnailUrl: `https://picsum.photos/320/180?random=${index + 1}`,
+      duration: 'PT8M45S',
+      viewCount: Math.floor(Math.random() * 10000000) + 100000,
+      likeCount: Math.floor(Math.random() * 100000) + 1000,
+      commentCount: Math.floor(Math.random() * 10000) + 100,
+      publishedAt: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString(),
+      tags: [topic, '트렌딩', '인기'],
+      categoryId: '22',
+      channelId: `mock-trending-channel-${index + 1}`,
+      channelTitle: `${topic} 전문 채널`,
+      rankPosition: index + 1,
+      trendingDate: new Date().toISOString(),
+      region: regionCode,
+    }))
+
+    return mockTrendingVideos.slice(0, maxResults)
   }
 }

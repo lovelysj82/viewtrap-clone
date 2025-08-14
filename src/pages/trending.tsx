@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Head from 'next/head'
 import { useQuery } from '@tanstack/react-query'
-import { TrendingUp, Eye, Heart, Calendar } from 'lucide-react'
+import { TrendingUp, Eye, Heart } from 'lucide-react'
 import { format } from 'date-fns'
 import type { TrendingVideo } from '@/types'
 
@@ -67,17 +67,16 @@ export default function Trending() {
 
         {/* Content */}
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-lg shadow animate-pulse">
-                <div className="bg-gray-300 h-48 rounded-t-lg"></div>
-                <div className="p-4">
+          <div className="space-y-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex flex-col sm:flex-row bg-white rounded-lg shadow animate-pulse p-4">
+                <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
+                  <div className="bg-gray-300 w-full sm:w-48 h-48 sm:h-36 rounded-lg"></div>
+                </div>
+                <div className="flex-1">
                   <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-300 rounded mb-4 w-3/4"></div>
-                  <div className="flex space-x-4">
-                    <div className="h-3 bg-gray-300 rounded w-16"></div>
-                    <div className="h-3 bg-gray-300 rounded w-16"></div>
-                  </div>
+                  <div className="h-3 bg-gray-300 rounded mb-2 w-3/4"></div>
+                  <div className="h-3 bg-gray-300 rounded w-1/2"></div>
                 </div>
               </div>
             ))}
@@ -92,53 +91,72 @@ export default function Trending() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-4">
             {trendingVideos?.map((video) => (
-              <div key={video.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-                <div className="relative">
-                  {video.thumbnailUrl && (
-                    <img
-                      src={video.thumbnailUrl}
-                      alt={video.title}
-                      className="w-full h-48 object-cover rounded-t-lg"
-                    />
-                  )}
-                  <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm font-semibold">
-                    #{video.rankPosition}
-                  </div>
+              <div key={video.id} className="flex flex-col sm:flex-row bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
+                {/* Left: Thumbnail with Rank */}
+                <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
+                  <a
+                    href={`https://www.youtube.com/watch?v=${video.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block relative group"
+                  >
+                    {video.thumbnailUrl && (
+                      <img
+                        src={video.thumbnailUrl}
+                        alt={video.title}
+                        className="w-full sm:w-48 h-48 sm:h-36 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                      />
+                    )}
+                    <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm font-semibold">
+                      #{video.rankPosition}
+                    </div>
+                  </a>
                 </div>
                 
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                    {video.title}
-                  </h3>
+                {/* Right: Video Info */}
+                <div className="flex-1 min-w-0">
+                  <a
+                    href={`https://www.youtube.com/watch?v=${video.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block mb-2"
+                  >
+                    <h3 className="text-lg font-medium text-gray-900 line-clamp-2 hover:text-blue-600 transition-colors">
+                      {video.title}
+                    </h3>
+                  </a>
                   
-                  <p className="text-sm text-gray-600 mb-3">
-                    {video.channelTitle}
-                  </p>
-
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center">
-                        <Eye className="h-4 w-4 mr-1" />
-                        {formatNumber(video.viewCount || 0)}
-                      </div>
-                      <div className="flex items-center">
-                        <Heart className="h-4 w-4 mr-1" />
-                        {formatNumber(video.likeCount || 0)}
-                      </div>
-                    </div>
-                    
+                  <div className="flex items-center text-sm text-gray-600 mb-2">
+                    <span>{video.channelTitle}</span>
                     {video.publishedAt && (
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {format(new Date(video.publishedAt), 'MM/dd')}
-                      </div>
+                      <>
+                        <span className="mx-2">•</span>
+                        <span>{format(new Date(video.publishedAt), 'yyyy년 MM월 dd일')}</span>
+                      </>
                     )}
                   </div>
 
+                  <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
+                    <div className="flex items-center">
+                      <Eye className="h-4 w-4 mr-1" />
+                      <span>조회수 {formatNumber(video.viewCount || 0)}회</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Heart className="h-4 w-4 mr-1" />
+                      <span>좋아요 {formatNumber(video.likeCount || 0)}개</span>
+                    </div>
+                  </div>
+
+                  {video.description && (
+                    <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                      {video.description}
+                    </p>
+                  )}
+
                   {video.tags && video.tags.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1">
                       {video.tags.slice(0, 3).map((tag, i) => (
                         <span
                           key={i}
