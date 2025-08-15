@@ -248,6 +248,7 @@ export default function Trending() {
             isOpen={!!selectedChannel}
             onClose={() => setSelectedChannel(null)}
             channelId={selectedChannel}
+            onVideoSelect={handleVideoClick}
           />
         </>
       )}

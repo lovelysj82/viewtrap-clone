@@ -392,6 +392,7 @@ export default function Search() {
             isOpen={!!selectedChannel}
             onClose={() => setSelectedChannel(null)}
             channelId={selectedChannel}
+            onVideoSelect={handleVideoClick}
           />
         </>
       )}
