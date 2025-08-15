@@ -5,6 +5,7 @@ import { Search as SearchIcon, Eye, Heart, Users, Clock, Play } from 'lucide-rea
 import { format } from 'date-fns'
 import type { SearchResult } from '@/types'
 import VideoModal from '@/components/VideoModal'
+import ChannelModal from '@/components/ChannelModal'
 
 export default function Search() {
   const [inputQuery, setInputQuery] = useState('')
@@ -12,6 +13,7 @@ export default function Search() {
   const [activeTab, setActiveTab] = useState<'videos' | 'channels'>('videos')
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [selectedVideo, setSelectedVideo] = useState<{id: string, title: string} | null>(null)
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null)
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -68,6 +70,10 @@ export default function Search() {
 
   const handleVideoClick = (videoId: string, title: string) => {
     setSelectedVideo({ id: videoId, title })
+  }
+
+  const handleChannelClick = (channelId: string) => {
+    setSelectedChannel(channelId)
   }
 
   return (
@@ -169,7 +175,7 @@ export default function Search() {
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="flex flex-col sm:flex-row bg-white rounded-lg shadow animate-pulse p-4">
                     <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
-                      <div className="bg-gray-300 w-full sm:w-32 h-32 sm:h-24 rounded-lg"></div>
+                      <div className="bg-gray-300 w-full sm:w-20 h-20 sm:h-16 rounded-lg"></div>
                     </div>
                     <div className="flex-1">
                       <div className="h-4 bg-gray-300 rounded mb-2"></div>
@@ -207,7 +213,7 @@ export default function Search() {
                         <img
                           src={video.thumbnailUrl}
                           alt={video.title}
-                          className="w-full sm:w-32 h-32 sm:h-24 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                          className="w-full sm:w-20 h-20 sm:h-16 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
                           <Play className="h-8 w-8 text-white fill-current" />
@@ -275,55 +281,39 @@ export default function Search() {
 
             {/* Channels Tab */}
             {!isLoading && !error && activeTab === 'channels' && searchResults?.channels && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="space-y-4">
                 {searchResults.channels.map((channel) => (
-                  <div key={channel.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
-                    <div className="flex items-center space-x-4 mb-4">
-                      {channel.thumbnailUrl ? (
-                        <img
-                          src={channel.thumbnailUrl}
-                          alt={channel.title}
-                          className="w-16 h-16 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-                          <Users className="h-8 w-8 text-gray-400" />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{channel.title}</h3>
-                        {channel.customUrl && (
-                          <p className="text-sm text-gray-500">@{channel.customUrl}</p>
+                  <div key={channel.id} className="flex items-center bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
+                    <button
+                      onClick={() => handleChannelClick(channel.id)}
+                      className="flex items-center flex-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
+                    >
+                      <div className="flex-shrink-0 mr-4">
+                        {channel.thumbnailUrl ? (
+                          <img
+                            src={channel.thumbnailUrl}
+                            alt={channel.title}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                            <Users className="h-4 w-4 text-gray-400" />
+                          </div>
                         )}
                       </div>
-                    </div>
-
-                    {channel.description && (
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                        {channel.description}
-                      </p>
-                    )}
-
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {formatNumber(channel.subscriberCount || 0)}
-                        </p>
-                        <p className="text-xs text-gray-500">구독자</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-900 truncate">{channel.title}</h3>
+                        <div className="flex items-center text-sm text-gray-500 space-x-4">
+                          <span>구독자 {formatNumber(channel.subscriberCount || 0)}명</span>
+                          <span>동영상 {formatNumber(channel.videoCount || 0)}개</span>
+                        </div>
+                        {channel.description && (
+                          <p className="text-sm text-gray-600 line-clamp-1 mt-1">
+                            {channel.description}
+                          </p>
+                        )}
                       </div>
-                      <div>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {formatNumber(channel.videoCount || 0)}
-                        </p>
-                        <p className="text-xs text-gray-500">동영상</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-gray-900">
-                          {formatNumber(channel.viewCount || 0)}
-                        </p>
-                        <p className="text-xs text-gray-500">조회수</p>
-                      </div>
-                    </div>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -379,6 +369,16 @@ export default function Search() {
           onClose={() => setSelectedVideo(null)}
           videoId={selectedVideo.id}
           title={selectedVideo.title}
+        />
+      )}
+
+      {/* Channel Modal */}
+      {selectedChannel && (
+        <ChannelModal
+          isOpen={!!selectedChannel}
+          onClose={() => setSelectedChannel(null)}
+          channelId={selectedChannel}
+          onVideoSelect={handleVideoClick}
         />
       )}
     </>

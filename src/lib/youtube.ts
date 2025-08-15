@@ -168,8 +168,9 @@ export class YouTubeService {
   }
 
   async getChannelVideos(channelId: string, maxResults: number = 50): Promise<YouTubeVideo[]> {
-    if (!youtube) {
-      return []
+    if (!this.apiKey || !youtube) {
+      console.warn('YouTube API key not available, returning mock channel videos')
+      return this.getMockChannelVideos(channelId, maxResults)
     }
 
     try {
@@ -187,7 +188,8 @@ export class YouTubeService {
       return await this.getVideoDetails(videoIds as string[])
     } catch (error) {
       console.error('Error getting channel videos:', error)
-      throw new Error('Failed to get channel videos')
+      console.warn('Falling back to mock channel videos')
+      return this.getMockChannelVideos(channelId, maxResults)
     }
   }
 
@@ -340,5 +342,27 @@ export class YouTubeService {
     }))
 
     return mockTrendingVideos.slice(0, maxResults)
+  }
+
+  private getMockChannelVideos(channelId: string, maxResults: number): YouTubeVideo[] {
+    const videoTopics = ['최신 영상', '인기 영상', '리뷰', '튜토리얼', '브이로그', 'Q&A', '라이브 스트림', '컬래버레이션']
+    
+    const mockChannelVideos = videoTopics.map((topic, index) => ({
+      id: `channel-video-${channelId}-${index + 1}`,
+      title: `${topic} - 채널의 ${topic} 영상`,
+      description: `이 채널의 ${topic} 관련 영상입니다. 실제 YouTube 데이터가 아닌 모의 데이터입니다.`,
+      thumbnailUrl: `https://picsum.photos/320/180?random=${channelId}-${index + 1}`,
+      duration: `PT${Math.floor(Math.random() * 20 + 5)}M${Math.floor(Math.random() * 60)}S`,
+      viewCount: Math.floor(Math.random() * 1000000) + 10000,
+      likeCount: Math.floor(Math.random() * 50000) + 500,
+      commentCount: Math.floor(Math.random() * 5000) + 50,
+      publishedAt: new Date(Date.now() - Math.random() * 86400000 * 30).toISOString(),
+      tags: [topic, '채널', '영상'],
+      categoryId: '22',
+      channelId: channelId,
+      channelTitle: '모의 채널',
+    }))
+
+    return mockChannelVideos.slice(0, maxResults)
   }
 }
