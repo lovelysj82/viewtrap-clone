@@ -175,7 +175,7 @@ export default function Search() {
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="flex flex-col sm:flex-row bg-white rounded-lg shadow animate-pulse p-4">
                     <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
-                      <div className="bg-gray-300 w-full sm:w-20 h-20 sm:h-16 rounded-lg"></div>
+                      <div className="bg-gray-300 w-full sm:w-16 h-16 sm:h-12 rounded-lg"></div>
                     </div>
                     <div className="flex-1">
                       <div className="h-4 bg-gray-300 rounded mb-2"></div>
@@ -213,7 +213,7 @@ export default function Search() {
                         <img
                           src={video.thumbnailUrl}
                           alt={video.title}
-                          className="w-full sm:w-20 h-20 sm:h-16 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                          className="w-full sm:w-16 h-16 sm:h-12 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
                           <Play className="h-8 w-8 text-white fill-current" />
@@ -293,11 +293,11 @@ export default function Search() {
                           <img
                             src={channel.thumbnailUrl}
                             alt={channel.title}
-                            className="w-8 h-8 rounded-full object-cover"
+                            className="w-6 h-6 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                            <Users className="h-4 w-4 text-gray-400" />
+                          <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
+                            <Users className="h-3 w-3 text-gray-400" />
                           </div>
                         )}
                       </div>
