@@ -79,15 +79,26 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
             </div>
           )}
           <iframe
-            key={`${videoId}-${Date.now()}`}
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0&playsinline=1&start=0&mute=0`}
+            key={`video-${videoId}-${isOpen ? 'open' : 'closed'}`}
+            src={isOpen ? `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&fs=1&cc_load_policy=0&iv_load_policy=3&start=0&mute=0&enablejsapi=0&origin=${encodeURIComponent(window.location.origin)}` : ''}
             title={title}
-            className="absolute top-0 left-0 w-full h-full border-0 bg-black"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            className="absolute top-0 left-0 w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
-            onLoad={() => setIsLoading(false)}
-            onError={() => setIsLoading(false)}
-            frameBorder="0"
+            onLoad={() => {
+              console.log('Iframe loaded')
+              setIsLoading(false)
+            }}
+            onError={(e) => {
+              console.error('Iframe error:', e)
+              setIsLoading(false)
+            }}
+            style={{ 
+              border: 'none',
+              width: '100%',
+              height: '100%',
+              backgroundColor: '#000'
+            }}
           />
         </div>
       </div>
