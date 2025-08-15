@@ -124,7 +124,7 @@ export default function ChannelModal({ isOpen, onClose, channelId, onVideoSelect
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="flex bg-gray-100 rounded-lg animate-pulse p-3">
                   <div className="flex-shrink-0 mr-3">
-                    <div className="bg-gray-300 w-12 h-9 rounded-lg"></div>
+                    <div className="bg-gray-300 rounded-lg" style={{ width: '60px', height: '45px' }}></div>
                   </div>
                   <div className="flex-1">
                     <div className="h-4 bg-gray-300 rounded mb-2"></div>
@@ -146,7 +146,8 @@ export default function ChannelModal({ isOpen, onClose, channelId, onVideoSelect
                         <img
                           src={video.thumbnailUrl}
                           alt={video.title}
-                          className="w-12 h-9 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                          className="object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                        style={{ width: '60px', height: '45px', minWidth: '60px', minHeight: '45px', maxWidth: '60px', maxHeight: '45px' }}
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
                           <Play className="h-6 w-6 text-white fill-current" />

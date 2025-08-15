@@ -77,7 +77,7 @@ export default function Trending() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="flex flex-col sm:flex-row bg-white rounded-lg shadow animate-pulse p-4">
                 <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
-                  <div className="bg-gray-300 w-full sm:w-12 h-12 sm:h-9 rounded-lg"></div>
+                  <div className="bg-gray-300 rounded-lg" style={{ width: '60px', height: '45px' }}></div>
                 </div>
                 <div className="flex-1">
                   <div className="h-4 bg-gray-300 rounded mb-2"></div>
@@ -110,7 +110,8 @@ export default function Trending() {
                       <img
                         src={video.thumbnailUrl}
                         alt={video.title}
-                        className="w-full sm:w-12 h-12 sm:h-9 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                        className="object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                        style={{ width: '60px', height: '45px', minWidth: '60px', minHeight: '45px', maxWidth: '60px', maxHeight: '45px' }}
                       />
                     )}
                     <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm font-semibold">

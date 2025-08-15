@@ -175,7 +175,7 @@ export default function Search() {
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="flex flex-col sm:flex-row bg-white rounded-lg shadow animate-pulse p-4">
                     <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
-                      <div className="bg-gray-300 w-full sm:w-12 h-12 sm:h-9 rounded-lg"></div>
+                      <div className="bg-gray-300 rounded-lg" style={{ width: '60px', height: '45px' }}></div>
                     </div>
                     <div className="flex-1">
                       <div className="h-4 bg-gray-300 rounded mb-2"></div>
@@ -213,7 +213,8 @@ export default function Search() {
                         <img
                           src={video.thumbnailUrl}
                           alt={video.title}
-                          className="w-full sm:w-12 h-12 sm:h-9 object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                          className="object-cover rounded-lg group-hover:opacity-90 transition-opacity"
+                          style={{ width: '60px', height: '45px', minWidth: '60px', minHeight: '45px', maxWidth: '60px', maxHeight: '45px' }}
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
                           <Play className="h-8 w-8 text-white fill-current" />
@@ -293,11 +294,12 @@ export default function Search() {
                           <img
                             src={channel.thumbnailUrl}
                             alt={channel.title}
-                            className="w-4 h-4 rounded-full object-cover"
+                            className="rounded-full object-cover"
+                            style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
                           />
                         ) : (
-                          <div className="w-4 h-4 bg-gray-200 rounded-full flex items-center justify-center">
-                            <Users className="h-2 w-2 text-gray-400" />
+                          <div className="bg-gray-200 rounded-full flex items-center justify-center" style={{ width: '20px', height: '20px' }}>
+                            <Users className="h-3 w-3 text-gray-400" />
                           </div>
                         )}
                       </div>
