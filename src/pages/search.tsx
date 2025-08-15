@@ -237,6 +237,10 @@ export default function Search() {
   const handleRecentSearch = (query: string) => {
     setInputQuery(query)
     setSearchQuery(query)
+    // 최근 검색어 클릭 시 자동완성 숨기기
+    setShowSuggestions(false)
+    setFilteredSuggestions([])
+    setSelectedSuggestionIndex(-1)
   }
 
   const handleVideoClick = (videoId: string, title: string) => {
@@ -255,6 +259,8 @@ export default function Search() {
     setInputQuery(suggestion)
     setSearchQuery(suggestion)
     setShowSuggestions(false)
+    setFilteredSuggestions([])
+    setSelectedSuggestionIndex(-1)
     saveSearch(suggestion)
   }
 
