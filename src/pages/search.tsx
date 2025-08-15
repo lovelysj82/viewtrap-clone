@@ -16,6 +16,28 @@ export default function Search() {
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [selectedVideo, setSelectedVideo] = useState<{id: string, title: string} | null>(null)
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([])
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
+
+  // 인기 검색 키워드 목록
+  const popularKeywords = [
+    '뉴진스', 'NewJeans', 'BTS', '블랙핑크', 'BLACKPINK', 'IVE', 'aespa', '에스파',
+    '아이브', '르세라핌', 'LE SSERAFIM', '(여자)아이들', 'ITZY', '있지',
+    '게임', '롤', '리그오브레전드', '배틀그라운드', '피파', '오버워치',
+    '먹방', '쿠킹', '요리', '레시피', '맛집', '음식',
+    '브이로그', 'VLOG', '일상', '여행', '캠핑', '데이트',
+    '뷰티', '메이크업', '화장', '스킨케어', '패션', '코디',
+    '운동', '헬스', '다이어트', '요가', '홈트', '필라테스',
+    '리뷰', '언박싱', '신제품', '아이폰', '갤럭시', '노트북',
+    '영화', '드라마', '예능', '웹드라마', '웹툰', '애니메이션',
+    'ASMR', '힐링', '수면', '백색소음', '빗소리', '자연소리',
+    '주식', '투자', '부동산', '경제', '재테크', '코인',
+    '공부', '수험생', '토익', '영어', '일본어', '중국어',
+    '반려동물', '강아지', '고양이', '펫', '동물', '새끼',
+    '쇼츠', 'Shorts', '밈', '짤', '유행', '챌린지',
+    '스포츠', '축구', '야구', '농구', '배구', '올림픽'
+  ]
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -24,6 +46,23 @@ export default function Search() {
       setRecentSearches(JSON.parse(saved))
     }
   }, [])
+
+  // 자동완성 키워드 필터링
+  useEffect(() => {
+    if (inputQuery.trim().length > 0) {
+      const query = inputQuery.toLowerCase()
+      const suggestions = popularKeywords.filter(keyword => 
+        keyword.toLowerCase().includes(query)
+      ).slice(0, 8) // 최대 8개만 표시
+      setFilteredSuggestions(suggestions)
+      setShowSuggestions(suggestions.length > 0)
+      setSelectedSuggestionIndex(-1) // 새로운 검색시 선택 초기화
+    } else {
+      setShowSuggestions(false)
+      setFilteredSuggestions([])
+      setSelectedSuggestionIndex(-1)
+    }
+  }, [inputQuery])
 
   const { data: searchResults, isLoading, error } = useQuery({
     queryKey: ['search', searchQuery],
@@ -82,6 +121,60 @@ export default function Search() {
     console.log('Selected channel set to:', channelId)
   }
 
+  const handleSuggestionClick = (suggestion: string) => {
+    setInputQuery(suggestion)
+    setSearchQuery(suggestion)
+    setShowSuggestions(false)
+    saveSearch(suggestion)
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputQuery(e.target.value)
+  }
+
+  const handleInputFocus = () => {
+    if (inputQuery.trim().length > 0 && filteredSuggestions.length > 0) {
+      setShowSuggestions(true)
+    }
+  }
+
+  const handleInputBlur = () => {
+    // 약간의 지연을 두어 suggestion 클릭이 가능하게 함
+    setTimeout(() => {
+      setShowSuggestions(false)
+      setSelectedSuggestionIndex(-1)
+    }, 200)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || filteredSuggestions.length === 0) return
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setSelectedSuggestionIndex(prev => 
+          prev < filteredSuggestions.length - 1 ? prev + 1 : 0
+        )
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setSelectedSuggestionIndex(prev => 
+          prev > 0 ? prev - 1 : filteredSuggestions.length - 1
+        )
+        break
+      case 'Enter':
+        if (selectedSuggestionIndex >= 0) {
+          e.preventDefault()
+          handleSuggestionClick(filteredSuggestions[selectedSuggestionIndex])
+        }
+        break
+      case 'Escape':
+        setShowSuggestions(false)
+        setSelectedSuggestionIndex(-1)
+        break
+    }
+  }
+
   return (
     <>
       <Head>
@@ -101,14 +194,18 @@ export default function Search() {
           </p>
 
           {/* Search Form */}
-          <form onSubmit={handleSearch} className="max-w-2xl">
+          <form onSubmit={handleSearch} className="max-w-2xl relative">
             <div className="flex">
               <input
                 type="text"
                 value={inputQuery}
-                onChange={(e) => setInputQuery(e.target.value)}
+                onChange={handleInputChange}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                onKeyDown={handleKeyDown}
                 placeholder="검색할 키워드를 입력하세요"
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                autoComplete="off"
               />
               <button
                 type="submit"
@@ -120,6 +217,31 @@ export default function Search() {
                 </div>
               </button>
             </div>
+            
+            {/* 자동완성 드롭다운 */}
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-12 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                {filteredSuggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className={`w-full text-left px-4 py-2 focus:outline-none transition-colors border-b border-gray-100 last:border-b-0 ${
+                      index === selectedSuggestionIndex 
+                        ? 'bg-blue-50 text-blue-700' 
+                        : 'hover:bg-gray-100 text-gray-900'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <SearchIcon className={`h-4 w-4 mr-3 ${
+                        index === selectedSuggestionIndex ? 'text-blue-500' : 'text-gray-400'
+                      }`} />
+                      <span>{suggestion}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </form>
 
           {/* Recent Searches */}
