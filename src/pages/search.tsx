@@ -19,6 +19,7 @@ export default function Search() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([])
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
 
   // 인기 검색 키워드 및 문구 목록
   const popularKeywords = [
@@ -118,53 +119,82 @@ export default function Search() {
     }
   }, [])
 
-  // 자동완성 키워드 필터링 (유튜브 스타일)
+  // 실제 YouTube 자동완성 API 호출
   useEffect(() => {
-    if (inputQuery.trim().length > 0) {
-      const query = inputQuery.toLowerCase()
-      
-      // 우선순위별 필터링
-      // 1. 정확히 일치하는 것
-      const exactMatch = popularKeywords.filter(keyword => 
-        keyword.toLowerCase() === query
-      )
-      
-      // 2. 시작하는 것
-      const startsWith = popularKeywords.filter(keyword => 
-        keyword.toLowerCase().startsWith(query) && keyword.toLowerCase() !== query
-      )
-      
-      // 3. 단어 경계에서 시작하는 것 (스페이스 후에 시작)
-      const wordBoundary = popularKeywords.filter(keyword => {
-        const lowerKeyword = keyword.toLowerCase()
-        const index = lowerKeyword.indexOf(query)
-        return index > 0 && lowerKeyword[index - 1] === ' ' && 
-               !lowerKeyword.startsWith(query) && lowerKeyword !== query
-      })
-      
-      // 4. 포함하는 것 (위 조건들에 해당하지 않는 것)
-      const contains = popularKeywords.filter(keyword => {
-        const lowerKeyword = keyword.toLowerCase()
-        const hasQuery = lowerKeyword.includes(query)
-        const isExact = lowerKeyword === query
-        const startsWithQuery = lowerKeyword.startsWith(query)
-        const hasWordBoundary = lowerKeyword.indexOf(query) > 0 && lowerKeyword[lowerKeyword.indexOf(query) - 1] === ' '
+    const fetchSuggestions = async (query: string) => {
+      setIsLoadingSuggestions(true)
+      try {
+        const response = await fetch(`/api/youtube/autocomplete?q=${encodeURIComponent(query)}`)
+        const data = await response.json()
         
-        return hasQuery && !isExact && !startsWithQuery && !hasWordBoundary
-      })
-      
-      // 우선순위 순서로 결합
-      const suggestions = [...exactMatch, ...startsWith, ...wordBoundary, ...contains].slice(0, 12) // 더 많이 표시
-      
-      setFilteredSuggestions(suggestions)
-      setShowSuggestions(suggestions.length > 0)
-      setSelectedSuggestionIndex(-1) // 새로운 검색시 선택 초기화
+        if (data.suggestions && data.suggestions.length > 0) {
+          setFilteredSuggestions(data.suggestions.slice(0, 10))
+          setShowSuggestions(true)
+        } else {
+          // API 응답이 없으면 로컬 데이터로 폴백
+          const localSuggestions = getLocalSuggestions(query)
+          setFilteredSuggestions(localSuggestions)
+          setShowSuggestions(localSuggestions.length > 0)
+        }
+      } catch (error) {
+        console.error('Error fetching suggestions:', error)
+        // 에러 시 로컬 데이터로 폴백
+        const localSuggestions = getLocalSuggestions(query)
+        setFilteredSuggestions(localSuggestions)
+        setShowSuggestions(localSuggestions.length > 0)
+      } finally {
+        setIsLoadingSuggestions(false)
+        setSelectedSuggestionIndex(-1)
+      }
+    }
+
+    if (inputQuery.trim().length > 0) {
+      // 딜레이를 추가하여 너무 자주 API 호출하지 않도록 함
+      const delayTimer = setTimeout(() => {
+        fetchSuggestions(inputQuery.trim())
+      }, 300)
+
+      return () => clearTimeout(delayTimer)
     } else {
       setShowSuggestions(false)
       setFilteredSuggestions([])
       setSelectedSuggestionIndex(-1)
+      setIsLoadingSuggestions(false)
     }
   }, [inputQuery])
+
+  // 로컬 폴백 함수
+  const getLocalSuggestions = (query: string): string[] => {
+    const lowerQuery = query.toLowerCase()
+    
+    // 우선순위별 필터링
+    const exactMatch = popularKeywords.filter(keyword => 
+      keyword.toLowerCase() === lowerQuery
+    )
+    
+    const startsWith = popularKeywords.filter(keyword => 
+      keyword.toLowerCase().startsWith(lowerQuery) && keyword.toLowerCase() !== lowerQuery
+    )
+    
+    const wordBoundary = popularKeywords.filter(keyword => {
+      const lowerKeyword = keyword.toLowerCase()
+      const index = lowerKeyword.indexOf(lowerQuery)
+      return index > 0 && lowerKeyword[index - 1] === ' ' && 
+             !lowerKeyword.startsWith(lowerQuery) && lowerKeyword !== lowerQuery
+    })
+    
+    const contains = popularKeywords.filter(keyword => {
+      const lowerKeyword = keyword.toLowerCase()
+      const hasQuery = lowerKeyword.includes(lowerQuery)
+      const isExact = lowerKeyword === lowerQuery
+      const startsWithQuery = lowerKeyword.startsWith(lowerQuery)
+      const hasWordBoundary = lowerKeyword.indexOf(lowerQuery) > 0 && lowerKeyword[lowerKeyword.indexOf(lowerQuery) - 1] === ' '
+      
+      return hasQuery && !isExact && !startsWithQuery && !hasWordBoundary
+    })
+    
+    return [...exactMatch, ...startsWith, ...wordBoundary, ...contains].slice(0, 10)
+  }
 
   const { data: searchResults, isLoading, error } = useQuery({
     queryKey: ['search', searchQuery],
@@ -321,9 +351,17 @@ export default function Search() {
             </div>
             
             {/* 자동완성 드롭다운 */}
-            {showSuggestions && filteredSuggestions.length > 0 && (
+            {(showSuggestions || isLoadingSuggestions) && (
               <div className="absolute top-full left-0 right-12 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                {filteredSuggestions.map((suggestion, index) => (
+                {isLoadingSuggestions ? (
+                  <div className="px-4 py-3 text-gray-500 text-center">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                      검색어를 불러오는 중...
+                    </div>
+                  </div>
+                ) : filteredSuggestions.length > 0 ? (
+                  filteredSuggestions.map((suggestion, index) => (
                   <button
                     key={index}
                     type="button"
@@ -341,7 +379,12 @@ export default function Search() {
                       <span>{suggestion}</span>
                     </div>
                   </button>
-                ))}
+                  ))
+                ) : (
+                  <div className="px-4 py-3 text-gray-500 text-center">
+                    검색 결과가 없습니다
+                  </div>
+                )}
               </div>
             )}
           </form>
