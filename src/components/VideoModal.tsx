@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, ExternalLink } from 'lucide-react'
+import { X, ExternalLink, Play, Pause } from 'lucide-react'
 
 interface VideoModalProps {
   isOpen: boolean
@@ -10,13 +10,16 @@ interface VideoModalProps {
 
 export default function VideoModal({ isOpen, onClose, videoId, title }: VideoModalProps) {
   const [isLoading, setIsLoading] = useState(true)
+  const [isPlaying, setIsPlaying] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true)
+      setIsPlaying(true)
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
+      setIsPlaying(false)
     }
 
     return () => {
@@ -36,6 +39,10 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
     }
   }
 
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying)
+  }
+
   if (!isOpen) return null
 
   return (
@@ -52,6 +59,13 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
             {title}
           </h3>
           <div className="flex items-center space-x-2">
+            <button
+              onClick={togglePlay}
+              className="text-gray-300 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-colors"
+              title={isPlaying ? "일시정지" : "재생"}
+            >
+              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+            </button>
             <a
               href={`https://www.youtube.com/watch?v=${videoId}`}
               target="_blank"
@@ -79,8 +93,8 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
             </div>
           )}
           <iframe
-            key={`video-${videoId}-${isOpen ? 'open' : 'closed'}`}
-            src={isOpen ? `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&fs=1&cc_load_policy=0&iv_load_policy=3&start=0&mute=0&enablejsapi=0&origin=${encodeURIComponent(window.location.origin)}` : ''}
+            key={`video-${videoId}-${isOpen ? 'open' : 'closed'}-${isPlaying ? 'play' : 'pause'}`}
+            src={isOpen && isPlaying ? `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&fs=1&cc_load_policy=0&iv_load_policy=3&start=0&mute=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}` : ''}
             title={title}
             className="absolute top-0 left-0 w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
@@ -97,9 +111,23 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
               border: 'none',
               width: '100%',
               height: '100%',
-              backgroundColor: '#000'
+              backgroundColor: '#000',
+              display: isPlaying ? 'block' : 'none'
             }}
           />
+          {!isPlaying && (
+            <div className="absolute inset-0 bg-black flex items-center justify-center">
+              <div className="text-center">
+                <button
+                  onClick={togglePlay}
+                  className="bg-red-600 hover:bg-red-700 text-white p-4 rounded-full transition-colors"
+                >
+                  <Play className="h-8 w-8 fill-current" />
+                </button>
+                <p className="text-white mt-4 text-lg">{title}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

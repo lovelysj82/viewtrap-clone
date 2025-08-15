@@ -203,9 +203,9 @@ export default function Search() {
             {!isLoading && !error && activeTab === 'videos' && searchResults?.videos && (
               <div className="space-y-4">
                 {searchResults.videos.map((video) => (
-                  <div key={video.id} className="flex flex-col sm:flex-row bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
+                  <div key={video.id} className="flex bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
                     {/* Left: Thumbnail */}
-                    <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
+                    <div className="flex-shrink-0 mr-4">
                       <button
                         onClick={() => handleVideoClick(video.id, video.title)}
                         className="block relative group focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
@@ -231,7 +231,12 @@ export default function Search() {
                       </div>
                       
                       <div className="flex items-center text-sm text-gray-600 mb-2">
-                        <span>{video.channelTitle}</span>
+                        <button
+                          onClick={() => handleChannelClick(video.channelId)}
+                          className="hover:text-blue-600 focus:outline-none focus:text-blue-600 transition-colors"
+                        >
+                          {video.channelTitle}
+                        </button>
                         {video.publishedAt && (
                           <>
                             <span className="mx-2">•</span>

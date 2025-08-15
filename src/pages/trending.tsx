@@ -5,10 +5,12 @@ import { TrendingUp, Eye, Heart, Play } from 'lucide-react'
 import { format } from 'date-fns'
 import type { TrendingVideo } from '@/types'
 import VideoModal from '@/components/VideoModal'
+import ChannelModal from '@/components/ChannelModal'
 
 export default function Trending() {
   const [region, setRegion] = useState('KR')
   const [selectedVideo, setSelectedVideo] = useState<{id: string, title: string} | null>(null)
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null)
 
   const { data: trendingVideos, isLoading, error } = useQuery({
     queryKey: ['trending', region],
@@ -35,6 +37,10 @@ export default function Trending() {
 
   const handleVideoClick = (videoId: string, title: string) => {
     setSelectedVideo({ id: videoId, title })
+  }
+
+  const handleChannelClick = (channelId: string) => {
+    setSelectedChannel(channelId)
   }
 
   return (
@@ -99,9 +105,9 @@ export default function Trending() {
         ) : (
           <div className="space-y-4">
             {trendingVideos?.map((video) => (
-              <div key={video.id} className="flex flex-col sm:flex-row bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
+              <div key={video.id} className="flex bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-4">
                 {/* Left: Thumbnail with Rank */}
-                <div className="flex-shrink-0 mb-3 sm:mb-0 sm:mr-4">
+                <div className="flex-shrink-0 mr-4">
                   <button
                     onClick={() => handleVideoClick(video.id, video.title)}
                     className="block relative group focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg"
@@ -132,7 +138,12 @@ export default function Trending() {
                   </div>
                   
                   <div className="flex items-center text-sm text-gray-600 mb-2">
-                    <span>{video.channelTitle}</span>
+                    <button
+                      onClick={() => handleChannelClick(video.channelId)}
+                      className="hover:text-blue-600 focus:outline-none focus:text-blue-600 transition-colors"
+                    >
+                      {video.channelTitle}
+                    </button>
                     {video.publishedAt && (
                       <>
                         <span className="mx-2">•</span>
@@ -216,6 +227,16 @@ export default function Trending() {
           onClose={() => setSelectedVideo(null)}
           videoId={selectedVideo.id}
           title={selectedVideo.title}
+        />
+      )}
+
+      {/* Channel Modal */}
+      {selectedChannel && (
+        <ChannelModal
+          isOpen={!!selectedChannel}
+          onClose={() => setSelectedChannel(null)}
+          channelId={selectedChannel}
+          onVideoSelect={handleVideoClick}
         />
       )}
     </>
