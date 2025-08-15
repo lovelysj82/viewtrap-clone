@@ -73,11 +73,26 @@ export default function Search() {
     '주식 투자', '부동산 투자', '코인 투자', '재테크 방법', '용돈 벌기',
     '주식 초보', '투자 공부', '경제 뉴스', '돈 버는 법', '부업 추천',
     
-    // 공부/교육 관련
+    // 공부/교육 관련 (영어 중심으로 대폭 확장)
     '공부', '수험생', '토익', '영어', '일본어', '중국어',
-    '영어 공부법', '토익 공부', '일본어 기초', '중국어 회화', '수능 공부',
-    '영어 잘하는 법', '영어 단어 500개', '일본어 히라가나', '중국어 발음', '공무원 시험',
-    '토익 LC', '토익 RC', '영어 회화', '일본어 배우기', '중국어 왕초보',
+    
+    // 영어 관련 (유튜브에서 실제로 많이 검색되는 것들)
+    '영어', '영어 공부법', '영어 잘하는 법', '영어 단어 500개', '영어 회화',
+    '영어회화', '영어동요', '영어기초배우기', '영어듣기', '영어노래',
+    '영어단어 쉽게 외우기', '영어회화 공부법', '영어단어', '영어공부',
+    '영어발음', '영어문법', '영어독해', '영어작문', '영어말하기',
+    '영어 패턴', '영어 표현', '영어 숙어', '영어 문장', '영어 기초',
+    '영어 초보', '영어 왕초보', '영어 독학', '영어 강의', '영어 강좌',
+    '영어 인강', '영어 무료', '영어 기본', '영어 기초회화', '영어 생활회화',
+    '영어 비즈니스', '영어 면접', '영어 프레젠테이션', '영어 이메일',
+    '영어 리스닝', '영어 스피킹', '영어 라이팅', '영어 리딩',
+    '영어 TOEIC', '영어 TOEFL', '영어 IELTS', '영어 오픽',
+    '영어 드라마', '영어 영화', '영어 팝송', '영어 뉴스', '영어 만화',
+    
+    // 기타 언어
+    '토익 공부', '일본어 기초', '중국어 회화', '수능 공부',
+    '일본어 히라가나', '중국어 발음', '공무원 시험',
+    '토익 LC', '토익 RC', '일본어 배우기', '중국어 왕초보',
     
     // 반려동물 관련
     '반려동물', '강아지', '고양이', '펫', '동물', '새끼',
@@ -103,21 +118,43 @@ export default function Search() {
     }
   }, [])
 
-  // 자동완성 키워드 필터링
+  // 자동완성 키워드 필터링 (유튜브 스타일)
   useEffect(() => {
     if (inputQuery.trim().length > 0) {
       const query = inputQuery.toLowerCase()
       
-      // 우선순위 기반 필터링
-      const startsWith = popularKeywords.filter(keyword => 
-        keyword.toLowerCase().startsWith(query)
-      )
-      const contains = popularKeywords.filter(keyword => 
-        keyword.toLowerCase().includes(query) && !keyword.toLowerCase().startsWith(query)
+      // 우선순위별 필터링
+      // 1. 정확히 일치하는 것
+      const exactMatch = popularKeywords.filter(keyword => 
+        keyword.toLowerCase() === query
       )
       
-      // 시작하는 것을 우선으로, 포함하는 것을 그 다음으로
-      const suggestions = [...startsWith, ...contains].slice(0, 8)
+      // 2. 시작하는 것
+      const startsWith = popularKeywords.filter(keyword => 
+        keyword.toLowerCase().startsWith(query) && keyword.toLowerCase() !== query
+      )
+      
+      // 3. 단어 경계에서 시작하는 것 (스페이스 후에 시작)
+      const wordBoundary = popularKeywords.filter(keyword => {
+        const lowerKeyword = keyword.toLowerCase()
+        const index = lowerKeyword.indexOf(query)
+        return index > 0 && lowerKeyword[index - 1] === ' ' && 
+               !lowerKeyword.startsWith(query) && lowerKeyword !== query
+      })
+      
+      // 4. 포함하는 것 (위 조건들에 해당하지 않는 것)
+      const contains = popularKeywords.filter(keyword => {
+        const lowerKeyword = keyword.toLowerCase()
+        const hasQuery = lowerKeyword.includes(query)
+        const isExact = lowerKeyword === query
+        const startsWithQuery = lowerKeyword.startsWith(query)
+        const hasWordBoundary = lowerKeyword.indexOf(query) > 0 && lowerKeyword[lowerKeyword.indexOf(query) - 1] === ' '
+        
+        return hasQuery && !isExact && !startsWithQuery && !hasWordBoundary
+      })
+      
+      // 우선순위 순서로 결합
+      const suggestions = [...exactMatch, ...startsWith, ...wordBoundary, ...contains].slice(0, 12) // 더 많이 표시
       
       setFilteredSuggestions(suggestions)
       setShowSuggestions(suggestions.length > 0)
@@ -285,7 +322,7 @@ export default function Search() {
             
             {/* 자동완성 드롭다운 */}
             {showSuggestions && filteredSuggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-12 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+              <div className="absolute top-full left-0 right-12 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                 {filteredSuggestions.map((suggestion, index) => (
                   <button
                     key={index}
