@@ -6,6 +6,8 @@ import { format } from 'date-fns'
 import type { SearchResult } from '@/types'
 import VideoModal from '@/components/VideoModal'
 import ChannelModal from '@/components/ChannelModal'
+import SimpleModal from '@/components/SimpleModal'
+import SimpleChannelModal from '@/components/SimpleChannelModal'
 
 export default function Search() {
   const [inputQuery, setInputQuery] = useState('')
@@ -372,8 +374,8 @@ export default function Search() {
       {/* Video Modal */}
       {selectedVideo && (
         <>
-          {console.log('Rendering VideoModal with selectedVideo:', selectedVideo)}
-          <VideoModal
+          {console.log('Rendering SimpleModal with selectedVideo:', selectedVideo)}
+          <SimpleModal
             isOpen={!!selectedVideo}
             onClose={() => setSelectedVideo(null)}
             videoId={selectedVideo.id}
@@ -385,12 +387,11 @@ export default function Search() {
       {/* Channel Modal */}
       {selectedChannel && (
         <>
-          {console.log('Rendering ChannelModal with selectedChannel:', selectedChannel)}
-          <ChannelModal
+          {console.log('Rendering SimpleChannelModal with selectedChannel:', selectedChannel)}
+          <SimpleChannelModal
             isOpen={!!selectedChannel}
             onClose={() => setSelectedChannel(null)}
             channelId={selectedChannel}
-            onVideoSelect={handleVideoClick}
           />
         </>
       )}
