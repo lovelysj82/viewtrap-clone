@@ -34,8 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ suggestions: [] })
     }
 
-    const data = JSON.parse(match[0])
-    const suggestions = data[1]?.map((item: any[]) => item[0])?.filter(Boolean) || []
+    const data = JSON.parse(match[0]) as [string, string[][]]
+    const suggestions = data[1]?.map((item: string[]) => item[0])?.filter(Boolean) || []
 
     res.status(200).json({ suggestions })
   } catch (error) {

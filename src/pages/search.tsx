@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Head from 'next/head'
 import { useQuery } from '@tanstack/react-query'
 import { Search as SearchIcon, Eye, Heart, Users, Clock, Play } from 'lucide-react'
 import { format } from 'date-fns'
 import type { SearchResult } from '@/types'
-import VideoModal from '@/components/VideoModal'
-import ChannelModal from '@/components/ChannelModal'
 import SimpleModal from '@/components/SimpleModal'
 import SimpleChannelModal from '@/components/SimpleChannelModal'
 
@@ -21,8 +19,8 @@ export default function Search() {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
 
-  // 인기 검색 키워드 및 문구 목록
-  const popularKeywords = [
+  // 인기 검색 키워드 및 문구 목록 (useMemo로 최적화)
+  const popularKeywords = useMemo(() => [
     // K-POP 관련
     '뉴진스', 'NewJeans', 'BTS', '블랙핑크', 'BLACKPINK', 'IVE', 'aespa', '에스파',
     '아이브', '르세라핌', 'LE SSERAFIM', '(여자)아이들', 'ITZY', '있지',
@@ -109,7 +107,7 @@ export default function Search() {
     '스포츠', '축구', '야구', '농구', '배구', '올림픽',
     '월드컵', 'KBO 야구', 'NBA 농구', '손흥민', '이강인',
     '축구 하이라이트', '야구 홈런', '농구 덩크', '올림픽 하이라이트', '스포츠 뉴스'
-  ]
+  ], [])
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -118,6 +116,39 @@ export default function Search() {
       setRecentSearches(JSON.parse(saved))
     }
   }, [])
+
+  // 로컬 폴백 함수를 useCallback으로 메모이제이션
+  const getLocalSuggestions = useCallback((query: string): string[] => {
+    const lowerQuery = query.toLowerCase()
+    
+    // 우선순위별 필터링
+    const exactMatch = popularKeywords.filter(keyword => 
+      keyword.toLowerCase() === lowerQuery
+    )
+    
+    const startsWith = popularKeywords.filter(keyword => 
+      keyword.toLowerCase().startsWith(lowerQuery) && keyword.toLowerCase() !== lowerQuery
+    )
+    
+    const wordBoundary = popularKeywords.filter(keyword => {
+      const lowerKeyword = keyword.toLowerCase()
+      const index = lowerKeyword.indexOf(lowerQuery)
+      return index > 0 && lowerKeyword[index - 1] === ' ' && 
+             !lowerKeyword.startsWith(lowerQuery) && lowerKeyword !== lowerQuery
+    })
+    
+    const contains = popularKeywords.filter(keyword => {
+      const lowerKeyword = keyword.toLowerCase()
+      const hasQuery = lowerKeyword.includes(lowerQuery)
+      const isExact = lowerKeyword === lowerQuery
+      const startsWithQuery = lowerKeyword.startsWith(lowerQuery)
+      const hasWordBoundary = lowerKeyword.indexOf(lowerQuery) > 0 && lowerKeyword[lowerKeyword.indexOf(lowerQuery) - 1] === ' '
+      
+      return hasQuery && !isExact && !startsWithQuery && !hasWordBoundary
+    })
+    
+    return [...exactMatch, ...startsWith, ...wordBoundary, ...contains].slice(0, 10)
+  }, [popularKeywords])
 
   // 실제 YouTube 자동완성 API 호출
   useEffect(() => {
@@ -161,40 +192,7 @@ export default function Search() {
       setSelectedSuggestionIndex(-1)
       setIsLoadingSuggestions(false)
     }
-  }, [inputQuery])
-
-  // 로컬 폴백 함수
-  const getLocalSuggestions = (query: string): string[] => {
-    const lowerQuery = query.toLowerCase()
-    
-    // 우선순위별 필터링
-    const exactMatch = popularKeywords.filter(keyword => 
-      keyword.toLowerCase() === lowerQuery
-    )
-    
-    const startsWith = popularKeywords.filter(keyword => 
-      keyword.toLowerCase().startsWith(lowerQuery) && keyword.toLowerCase() !== lowerQuery
-    )
-    
-    const wordBoundary = popularKeywords.filter(keyword => {
-      const lowerKeyword = keyword.toLowerCase()
-      const index = lowerKeyword.indexOf(lowerQuery)
-      return index > 0 && lowerKeyword[index - 1] === ' ' && 
-             !lowerKeyword.startsWith(lowerQuery) && lowerKeyword !== lowerQuery
-    })
-    
-    const contains = popularKeywords.filter(keyword => {
-      const lowerKeyword = keyword.toLowerCase()
-      const hasQuery = lowerKeyword.includes(lowerQuery)
-      const isExact = lowerKeyword === lowerQuery
-      const startsWithQuery = lowerKeyword.startsWith(lowerQuery)
-      const hasWordBoundary = lowerKeyword.indexOf(lowerQuery) > 0 && lowerKeyword[lowerKeyword.indexOf(lowerQuery) - 1] === ' '
-      
-      return hasQuery && !isExact && !startsWithQuery && !hasWordBoundary
-    })
-    
-    return [...exactMatch, ...startsWith, ...wordBoundary, ...contains].slice(0, 10)
-  }
+  }, [inputQuery, getLocalSuggestions])
 
   const { data: searchResults, isLoading, error } = useQuery({
     queryKey: ['search', searchQuery],

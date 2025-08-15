@@ -4,8 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import { TrendingUp, Eye, Heart, Play } from 'lucide-react'
 import { format } from 'date-fns'
 import type { TrendingVideo } from '@/types'
-import VideoModal from '@/components/VideoModal'
-import ChannelModal from '@/components/ChannelModal'
 import SimpleModal from '@/components/SimpleModal'
 import SimpleChannelModal from '@/components/SimpleChannelModal'
 
