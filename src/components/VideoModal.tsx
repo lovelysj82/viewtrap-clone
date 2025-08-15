@@ -11,7 +11,10 @@ interface VideoModalProps {
 export default function VideoModal({ isOpen, onClose, videoId, title }: VideoModalProps) {
   const [isPlaying, setIsPlaying] = useState(false)
 
+  console.log('VideoModal render with props:', { isOpen, videoId, title })
+
   useEffect(() => {
+    console.log('VideoModal useEffect triggered with isOpen:', isOpen)
     if (isOpen) {
       document.body.style.overflow = 'hidden'
       setIsPlaying(false) // 모달 열릴 때 항상 정지 상태로 시작
@@ -42,9 +45,12 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
     setIsPlaying(!isPlaying)
   }
 
-  if (!isOpen) return null
+  if (!isOpen) {
+    console.log('VideoModal not rendering because isOpen is false')
+    return null
+  }
 
-  console.log('VideoModal render - isOpen:', isOpen, 'isPlaying:', isPlaying, 'videoId:', videoId)
+  console.log('VideoModal rendering with isOpen true, isPlaying:', isPlaying, 'videoId:', videoId)
 
   return (
     <div

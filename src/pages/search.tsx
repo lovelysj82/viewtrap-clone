@@ -70,12 +70,14 @@ export default function Search() {
 
   const handleVideoClick = (videoId: string, title: string) => {
     console.log('Video clicked:', videoId, title)
-    alert(`비디오 클릭됨: ${title}`)
     setSelectedVideo({ id: videoId, title })
+    console.log('Selected video set to:', { id: videoId, title })
   }
 
   const handleChannelClick = (channelId: string) => {
+    console.log('Channel clicked:', channelId)
     setSelectedChannel(channelId)
+    console.log('Selected channel set to:', channelId)
   }
 
   return (
@@ -369,22 +371,28 @@ export default function Search() {
 
       {/* Video Modal */}
       {selectedVideo && (
-        <VideoModal
-          isOpen={!!selectedVideo}
-          onClose={() => setSelectedVideo(null)}
-          videoId={selectedVideo.id}
-          title={selectedVideo.title}
-        />
+        <>
+          {console.log('Rendering VideoModal with selectedVideo:', selectedVideo)}
+          <VideoModal
+            isOpen={!!selectedVideo}
+            onClose={() => setSelectedVideo(null)}
+            videoId={selectedVideo.id}
+            title={selectedVideo.title}
+          />
+        </>
       )}
 
       {/* Channel Modal */}
       {selectedChannel && (
-        <ChannelModal
-          isOpen={!!selectedChannel}
-          onClose={() => setSelectedChannel(null)}
-          channelId={selectedChannel}
-          onVideoSelect={handleVideoClick}
-        />
+        <>
+          {console.log('Rendering ChannelModal with selectedChannel:', selectedChannel)}
+          <ChannelModal
+            isOpen={!!selectedChannel}
+            onClose={() => setSelectedChannel(null)}
+            channelId={selectedChannel}
+            onVideoSelect={handleVideoClick}
+          />
+        </>
       )}
     </>
   )
