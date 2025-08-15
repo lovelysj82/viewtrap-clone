@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { X, ExternalLink, Play, Pause } from 'lucide-react'
 
 interface VideoModalProps {
@@ -9,15 +9,12 @@ interface VideoModalProps {
 }
 
 export default function VideoModal({ isOpen, onClose, videoId, title }: VideoModalProps) {
-  const [isLoading, setIsLoading] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     if (isOpen) {
-      setIsLoading(true)
-      setIsPlaying(false)
       document.body.style.overflow = 'hidden'
+      setIsPlaying(false) // 모달 열릴 때 항상 정지 상태로 시작
     } else {
       document.body.style.overflow = 'unset'
       setIsPlaying(false)
@@ -26,7 +23,7 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen, videoId])
+  }, [isOpen])
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -40,17 +37,14 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
     }
   }
 
-  const handlePlay = () => {
-    setIsPlaying(true)
-    setIsLoading(true)
-  }
-
-  const handleStop = () => {
-    setIsPlaying(false)
-    setIsLoading(false)
+  const togglePlay = () => {
+    console.log('Toggle play clicked, current state:', isPlaying)
+    setIsPlaying(!isPlaying)
   }
 
   if (!isOpen) return null
+
+  console.log('VideoModal render - isOpen:', isOpen, 'isPlaying:', isPlaying, 'videoId:', videoId)
 
   return (
     <div
@@ -66,23 +60,13 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
             {title}
           </h3>
           <div className="flex items-center space-x-2">
-            {isPlaying ? (
-              <button
-                onClick={handleStop}
-                className="text-gray-300 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-colors"
-                title="정지"
-              >
-                <Pause className="h-5 w-5" />
-              </button>
-            ) : (
-              <button
-                onClick={handlePlay}
-                className="text-gray-300 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-colors"
-                title="재생"
-              >
-                <Play className="h-5 w-5" />
-              </button>
-            )}
+            <button
+              onClick={togglePlay}
+              className="text-gray-300 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-colors"
+              title={isPlaying ? "정지" : "재생"}
+            >
+              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+            </button>
             <a
               href={`https://www.youtube.com/watch?v=${videoId}`}
               target="_blank"
@@ -102,53 +86,37 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
           </div>
         </div>
 
-        {/* Video Player */}
-        <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
-          {!isPlaying ? (
-            // Thumbnail and Play Button
-            <div className="absolute inset-0 bg-black flex items-center justify-center">
+        {/* Video Content */}
+        <div className="relative w-full bg-black" style={{ aspectRatio: '16/9', minHeight: '400px' }}>
+          {isPlaying ? (
+            <iframe
+              src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0`}
+              title={title}
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              style={{ 
+                border: 'none',
+                width: '100%',
+                height: '100%',
+                backgroundColor: '#000'
+              }}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
               <div className="text-center">
                 <button
-                  onClick={handlePlay}
-                  className="bg-red-600 hover:bg-red-700 text-white p-6 rounded-full transition-colors mb-4"
+                  onClick={togglePlay}
+                  className="bg-red-600 hover:bg-red-700 text-white p-8 rounded-full transition-colors mb-6 shadow-lg"
                 >
-                  <Play className="h-12 w-12 fill-current" />
+                  <Play className="h-16 w-16 fill-current ml-1" />
                 </button>
-                <p className="text-white text-xl font-medium px-4">{title}</p>
+                <h4 className="text-white text-xl font-medium px-8 max-w-2xl mx-auto leading-relaxed">
+                  {title}
+                </h4>
+                <p className="text-gray-300 mt-3">클릭하여 재생</p>
               </div>
             </div>
-          ) : (
-            // Video iframe
-            <>
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-                </div>
-              )}
-              <iframe
-                ref={iframeRef}
-                key={`video-${videoId}-${Date.now()}`}
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&fs=1&cc_load_policy=0&iv_load_policy=3&start=0&mute=0`}
-                title={title}
-                className="absolute top-0 left-0 w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                allowFullScreen
-                onLoad={() => {
-                  console.log('Video loaded')
-                  setIsLoading(false)
-                }}
-                onError={(e) => {
-                  console.error('Video error:', e)
-                  setIsLoading(false)
-                }}
-                style={{ 
-                  border: 'none',
-                  width: '100%',
-                  height: '100%',
-                  backgroundColor: '#000'
-                }}
-              />
-            </>
           )}
         </div>
       </div>

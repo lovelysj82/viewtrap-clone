@@ -69,6 +69,8 @@ export default function Search() {
   }
 
   const handleVideoClick = (videoId: string, title: string) => {
+    console.log('Video clicked:', videoId, title)
+    alert(`비디오 클릭됨: ${title}`)
     setSelectedVideo({ id: videoId, title })
   }
 
