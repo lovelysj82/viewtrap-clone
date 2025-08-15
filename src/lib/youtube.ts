@@ -20,6 +20,7 @@ export class YouTubeService {
     this.apiKey = process.env.YOUTUBE_API_KEY || ''
     console.log('YouTube API Key available:', !!this.apiKey)
     console.log('YouTube API Key length:', this.apiKey?.length || 0)
+    console.log('YouTube API Key prefix:', this.apiKey?.substring(0, 10) || 'none')
   }
 
   static getInstance(): YouTubeService {

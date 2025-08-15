@@ -79,14 +79,15 @@ export default function VideoModal({ isOpen, onClose, videoId, title }: VideoMod
             </div>
           )}
           <iframe
-            key={`${videoId}-${isOpen}`}
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0&color=red&enablejsapi=0`}
+            key={`${videoId}-${Date.now()}`}
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0&playsinline=1&start=0&mute=0`}
             title={title}
-            className="absolute top-0 left-0 w-full h-full border-0"
+            className="absolute top-0 left-0 w-full h-full border-0 bg-black"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
             onLoad={() => setIsLoading(false)}
-            sandbox="allow-same-origin allow-scripts allow-popups allow-presentation"
+            onError={() => setIsLoading(false)}
+            frameBorder="0"
           />
         </div>
       </div>
