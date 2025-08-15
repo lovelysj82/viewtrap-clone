@@ -140,8 +140,9 @@ export default function Trending() {
                   <div className="flex items-center text-sm text-gray-600 mb-2">
                     <button
                       onClick={() => handleChannelClick(video.channelId)}
-                      className="hover:text-blue-600 focus:outline-none focus:text-blue-600 transition-colors"
+                      className="flex items-center hover:text-blue-600 focus:outline-none focus:text-blue-600 transition-colors mr-2"
                     >
+                      <div className="w-6 h-6 bg-gray-200 rounded-full mr-2 flex-shrink-0"></div>
                       {video.channelTitle}
                     </button>
                     {video.publishedAt && (
