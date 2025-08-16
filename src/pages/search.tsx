@@ -20,6 +20,7 @@ export default function Search() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
   const [preventAutoComplete, setPreventAutoComplete] = useState(false)
   const isRecentSearchClick = useRef(false)
+  const skipNextEffect = useRef(false)
 
   // 인기 검색 키워드 및 문구 목록 (useMemo로 최적화)
   const popularKeywords = useMemo(() => [
@@ -154,11 +155,37 @@ export default function Search() {
 
   // 실제 YouTube 자동완성 API 호출
   useEffect(() => {
+    // 최근 검색어 클릭으로 인한 effect 실행이면 스킵
+    if (skipNextEffect.current) {
+      skipNextEffect.current = false
+      return
+    }
+
+    // 최근 검색어나 인기 검색어 클릭 시 자동완성 완전 차단
+    if (isRecentSearchClick.current || preventAutoComplete) {
+      setShowSuggestions(false)
+      setFilteredSuggestions([])
+      setSelectedSuggestionIndex(-1)
+      setIsLoadingSuggestions(false)
+      return
+    }
+
     const fetchSuggestions = async (query: string) => {
+      // 다시 한번 플래그 확인
+      if (isRecentSearchClick.current || preventAutoComplete) {
+        return
+      }
+
       setIsLoadingSuggestions(true)
       try {
         const response = await fetch(`/api/youtube/autocomplete?q=${encodeURIComponent(query)}`)
         const data = await response.json()
+        
+        // API 호출 완료 후에도 플래그 확인
+        if (isRecentSearchClick.current || preventAutoComplete) {
+          setIsLoadingSuggestions(false)
+          return
+        }
         
         if (data.suggestions && data.suggestions.length > 0) {
           setFilteredSuggestions(data.suggestions.slice(0, 10))
@@ -171,32 +198,22 @@ export default function Search() {
         }
       } catch (error) {
         console.error('Error fetching suggestions:', error)
-        // 에러 시 로컬 데이터로 폴백
-        const localSuggestions = getLocalSuggestions(query)
-        setFilteredSuggestions(localSuggestions)
-        setShowSuggestions(localSuggestions.length > 0)
+        // 에러 시에도 플래그 확인
+        if (!isRecentSearchClick.current && !preventAutoComplete) {
+          const localSuggestions = getLocalSuggestions(query)
+          setFilteredSuggestions(localSuggestions)
+          setShowSuggestions(localSuggestions.length > 0)
+        }
       } finally {
         setIsLoadingSuggestions(false)
         setSelectedSuggestionIndex(-1)
       }
     }
 
-    // 최근 검색어나 인기 검색어 클릭 시 자동완성 완전 차단
-    if (isRecentSearchClick.current || preventAutoComplete) {
-      setShowSuggestions(false)
-      setFilteredSuggestions([])
-      setSelectedSuggestionIndex(-1)
-      setIsLoadingSuggestions(false)
-      return
-    }
-
     if (inputQuery.trim().length > 0) {
       // 딜레이를 추가하여 너무 자주 API 호출하지 않도록 함
       const delayTimer = setTimeout(() => {
-        // 다시 한번 플래그 확인
-        if (!isRecentSearchClick.current && !preventAutoComplete) {
-          fetchSuggestions(inputQuery.trim())
-        }
+        fetchSuggestions(inputQuery.trim())
       }, 300)
 
       return () => clearTimeout(delayTimer)
@@ -249,30 +266,33 @@ export default function Search() {
   }
 
   const handleRecentSearch = (query: string) => {
-    // 최근 검색어 클릭 플래그 설정
+    // 모든 플래그 즉시 설정
     isRecentSearchClick.current = true
     setPreventAutoComplete(true)
+    skipNextEffect.current = true
     
-    // 즉시 자동완성 관련 상태 모두 초기화 및 숨김
+    // 자동완성 관련 상태 완전 초기화
     setShowSuggestions(false)
     setFilteredSuggestions([])
     setSelectedSuggestionIndex(-1)
     setIsLoadingSuggestions(false)
     
-    // 먼저 검색 실행
+    // 검색 먼저 실행
     setSearchQuery(query)
     saveSearch(query)
     
-    // 그 다음에 input 값 설정 (순서 중요!)
+    // input 값 설정을 더 늦게 (useEffect 회피)
     setTimeout(() => {
+      skipNextEffect.current = true
       setInputQuery(query)
-    }, 50)
+    }, 100)
     
-    // 1.5초 후에 모든 플래그 해제
+    // 2초 후에 모든 플래그 해제
     setTimeout(() => {
       setPreventAutoComplete(false)
       isRecentSearchClick.current = false
-    }, 1500)
+      skipNextEffect.current = false
+    }, 2000)
   }
 
   const handleVideoClick = (videoId: string, title: string) => {
@@ -297,11 +317,23 @@ export default function Search() {
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputQuery(e.target.value)
-    // 사용자가 직접 타이핑하는 경우 모든 플래그 해제
-    if (preventAutoComplete || isRecentSearchClick.current) {
-      setPreventAutoComplete(false)
-      isRecentSearchClick.current = false
+    const newValue = e.target.value
+    
+    // 최근 검색어로 인한 변경이 아닌 실제 사용자 타이핑인지 확인
+    if (!isRecentSearchClick.current && !preventAutoComplete) {
+      setInputQuery(newValue)
+    } else if (isRecentSearchClick.current) {
+      // 최근 검색어 클릭 상태에서는 input 변경 무시하고 플래그만 해제
+      setInputQuery(newValue)
+      // 실제 사용자가 타이핑한 경우에만 플래그 해제
+      const isUserTyping = Math.abs(newValue.length - inputQuery.length) === 1
+      if (isUserTyping) {
+        setPreventAutoComplete(false)
+        isRecentSearchClick.current = false
+        skipNextEffect.current = false
+      }
+    } else {
+      setInputQuery(newValue)
     }
   }
 
