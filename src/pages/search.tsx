@@ -270,7 +270,6 @@ export default function Search() {
     // 이벤트 전파 완전 차단
     e.preventDefault()
     e.stopPropagation()
-    e.stopImmediatePropagation()
     
     console.log('Recent search clicked:', query)
     
