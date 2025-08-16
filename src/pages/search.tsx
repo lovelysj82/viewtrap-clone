@@ -21,6 +21,7 @@ export default function Search() {
   const [preventAutoComplete, setPreventAutoComplete] = useState(false)
   const isRecentSearchClick = useRef(false)
   const skipNextEffect = useRef(false)
+  const [inputReadOnly, setInputReadOnly] = useState(false)
 
   // 인기 검색 키워드 및 문구 목록 (useMemo로 최적화)
   const popularKeywords = useMemo(() => [
@@ -266,33 +267,41 @@ export default function Search() {
   }
 
   const handleRecentSearch = (query: string) => {
-    // 모든 플래그 즉시 설정
-    isRecentSearchClick.current = true
-    setPreventAutoComplete(true)
-    skipNextEffect.current = true
+    console.log('Recent search clicked:', query)
     
-    // 자동완성 관련 상태 완전 초기화
+    // 1. 즉시 모든 자동완성 차단
     setShowSuggestions(false)
     setFilteredSuggestions([])
     setSelectedSuggestionIndex(-1)
     setIsLoadingSuggestions(false)
     
-    // 검색 먼저 실행
+    // 2. input을 잠시 readOnly로 만들어 change 이벤트 차단
+    setInputReadOnly(true)
+    
+    // 3. 모든 플래그 설정
+    isRecentSearchClick.current = true
+    setPreventAutoComplete(true)
+    skipNextEffect.current = true
+    
+    // 4. 검색 실행
     setSearchQuery(query)
     saveSearch(query)
     
-    // input 값 설정을 더 늦게 (useEffect 회피)
-    setTimeout(() => {
-      skipNextEffect.current = true
-      setInputQuery(query)
-    }, 100)
+    // 5. input 값 설정 (readOnly 상태에서)
+    setInputQuery(query)
     
-    // 2초 후에 모든 플래그 해제
+    // 6. 200ms 후 readOnly 해제 및 플래그 유지
     setTimeout(() => {
+      setInputReadOnly(false)
+    }, 200)
+    
+    // 7. 3초 후 모든 플래그 완전 해제
+    setTimeout(() => {
+      console.log('Flags cleared after recent search')
       setPreventAutoComplete(false)
       isRecentSearchClick.current = false
       skipNextEffect.current = false
-    }, 2000)
+    }, 3000)
   }
 
   const handleVideoClick = (videoId: string, title: string) => {
@@ -318,22 +327,22 @@ export default function Search() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
+    console.log('Input change:', newValue, 'readOnly:', inputReadOnly, 'isRecent:', isRecentSearchClick.current)
     
-    // 최근 검색어로 인한 변경이 아닌 실제 사용자 타이핑인지 확인
-    if (!isRecentSearchClick.current && !preventAutoComplete) {
-      setInputQuery(newValue)
-    } else if (isRecentSearchClick.current) {
-      // 최근 검색어 클릭 상태에서는 input 변경 무시하고 플래그만 해제
-      setInputQuery(newValue)
-      // 실제 사용자가 타이핑한 경우에만 플래그 해제
-      const isUserTyping = Math.abs(newValue.length - inputQuery.length) === 1
-      if (isUserTyping) {
-        setPreventAutoComplete(false)
-        isRecentSearchClick.current = false
-        skipNextEffect.current = false
-      }
-    } else {
-      setInputQuery(newValue)
+    // readOnly 상태에서는 change 이벤트가 발생하지 않아야 하지만, 혹시 모르니 차단
+    if (inputReadOnly || isRecentSearchClick.current) {
+      console.log('Input change blocked')
+      return
+    }
+    
+    setInputQuery(newValue)
+    
+    // 사용자가 직접 타이핑하는 경우 모든 플래그 해제
+    if (preventAutoComplete) {
+      console.log('User typing detected, clearing flags')
+      setPreventAutoComplete(false)
+      isRecentSearchClick.current = false
+      skipNextEffect.current = false
     }
   }
 
@@ -411,6 +420,7 @@ export default function Search() {
                 placeholder="검색할 키워드를 입력하세요"
                 className="flex-1 px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 autoComplete="off"
+                readOnly={inputReadOnly}
               />
               <button
                 type="submit"
