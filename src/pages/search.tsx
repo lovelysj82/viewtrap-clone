@@ -193,11 +193,6 @@ export default function Search() {
       setSelectedSuggestionIndex(-1)
       setIsLoadingSuggestions(false)
     }
-    
-    // preventAutoComplete 플래그가 설정되어 있다면 다시 false로 설정
-    if (preventAutoComplete) {
-      setPreventAutoComplete(false)
-    }
   }, [inputQuery, getLocalSuggestions, preventAutoComplete])
 
   const { data: searchResults, isLoading, error } = useQuery({
@@ -241,14 +236,18 @@ export default function Search() {
   }
 
   const handleRecentSearch = (query: string) => {
-    // 자동완성 방지 플래그 설정
+    // 자동완성 방지 플래그 설정 및 검색 실행
     setPreventAutoComplete(true)
     setInputQuery(query)
     setSearchQuery(query)
-    // 최근 검색어 클릭 시 자동완성 숨기기
     setShowSuggestions(false)
     setFilteredSuggestions([])
     setSelectedSuggestionIndex(-1)
+    
+    // 500ms 후에 자동완성 플래그 해제 (검색 완료 후)
+    setTimeout(() => {
+      setPreventAutoComplete(false)
+    }, 500)
   }
 
   const handleVideoClick = (videoId: string, title: string) => {
@@ -274,6 +273,10 @@ export default function Search() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputQuery(e.target.value)
+    // 사용자가 직접 타이핑하는 경우 자동완성 플래그 해제
+    if (preventAutoComplete) {
+      setPreventAutoComplete(false)
+    }
   }
 
   const handleInputFocus = () => {
