@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { CacheService, CACHE_TTL } from '@/lib/cache'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -11,7 +12,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Query parameter is required' })
   }
 
+  const cache = CacheService.getInstance()
+
   try {
+    // 캐시에서 먼저 확인
+    const cacheParams = { query: q }
+    const cached = await cache.get<string[]>('autocomplete', cacheParams)
+    if (cached) {
+      console.log('캐시에서 자동완성 반환:', q)
+      return res.status(200).json({ suggestions: cached })
+    }
+
     // YouTube의 비공식 자동완성 API 엔드포인트 사용
     const url = `https://clients1.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(q)}&hl=ko`
     
@@ -36,6 +47,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const data = JSON.parse(match[0]) as [string, string[][]]
     const suggestions = data[1]?.map((item: string[]) => item[0])?.filter(Boolean) || []
+
+    // 결과를 캐시에 저장 (1시간)
+    await cache.set('autocomplete', cacheParams, suggestions, CACHE_TTL.AUTOCOMPLETE)
+    console.log('자동완성 결과를 캐시에 저장:', q)
 
     res.status(200).json({ suggestions })
   } catch (error) {

@@ -1,26 +1,24 @@
 import { google } from 'googleapis'
 import type { YouTubeChannel, YouTubeVideo, TrendingVideo } from '@/types'
-
-let youtube: ReturnType<typeof google.youtube> | null = null
-
-try {
-  youtube = google.youtube({
-    version: 'v3',
-    auth: process.env.YOUTUBE_API_KEY,
-  })
-} catch (error) {
-  console.error('Failed to initialize YouTube API:', error)
-}
+import { CacheService, CACHE_TTL } from './cache'
 
 export class YouTubeService {
   private static instance: YouTubeService
-  private apiKey: string
+  private apiKeys: string[]
+  private currentKeyIndex: number = 0
+  private keyQuotaExhausted: Set<number> = new Set()
+  private cache: CacheService
 
   constructor() {
-    this.apiKey = process.env.YOUTUBE_API_KEY || ''
-    console.log('YouTube API Key available:', !!this.apiKey)
-    console.log('YouTube API Key length:', this.apiKey?.length || 0)
-    console.log('YouTube API Key prefix:', this.apiKey?.substring(0, 10) || 'none')
+    // 환경변수에서 API 키들을 가져와서 배열로 만듦
+    const keysString = process.env.YOUTUBE_API_KEYS || process.env.YOUTUBE_API_KEY || ''
+    this.apiKeys = keysString.split(',').map(key => key.trim()).filter(Boolean)
+    
+    // 캐시 서비스 초기화
+    this.cache = CacheService.getInstance()
+    
+    console.log('YouTube API Keys available:', this.apiKeys.length)
+    console.log('API Keys prefixes:', this.apiKeys.map(key => key.substring(0, 10)))
   }
 
   static getInstance(): YouTubeService {
@@ -30,21 +28,109 @@ export class YouTubeService {
     return YouTubeService.instance
   }
 
+  private getCurrentApiKey(): string | null {
+    if (this.apiKeys.length === 0) return null
+    
+    // 모든 키가 할당량 초과 상태면 첫 번째 키로 리셋 (다음날 할당량 리셋 대비)
+    if (this.keyQuotaExhausted.size === this.apiKeys.length) {
+      console.log('모든 API 키의 할당량이 초과되었습니다. 첫 번째 키로 리셋합니다.')
+      this.keyQuotaExhausted.clear()
+      this.currentKeyIndex = 0
+    }
+    
+    // 현재 키가 할당량 초과 상태가 아닌 키를 찾음
+    let attempts = 0
+    while (attempts < this.apiKeys.length) {
+      if (!this.keyQuotaExhausted.has(this.currentKeyIndex)) {
+        return this.apiKeys[this.currentKeyIndex]
+      }
+      this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length
+      attempts++
+    }
+    
+    return null
+  }
+
+  private createYouTubeClient(): ReturnType<typeof google.youtube> | null {
+    const apiKey = this.getCurrentApiKey()
+    if (!apiKey) return null
+
+    try {
+      return google.youtube({
+        version: 'v3',
+        auth: apiKey,
+      })
+    } catch (error) {
+      console.error('Failed to create YouTube client:', error)
+      return null
+    }
+  }
+
+  private handleQuotaExhausted(error: any): boolean {
+    if (error.message?.includes('quota') || error.message?.includes('exceeded')) {
+      console.log(`API 키 ${this.currentKeyIndex + 1}의 할당량이 초과되었습니다. 다음 키로 전환합니다.`)
+      this.keyQuotaExhausted.add(this.currentKeyIndex)
+      this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length
+      return true
+    }
+    return false
+  }
+
+  private async executeWithRetry<T>(operation: (youtube: ReturnType<typeof google.youtube>) => Promise<T>): Promise<T> {
+    let lastError: any
+    
+    for (let attempt = 0; attempt < this.apiKeys.length; attempt++) {
+      const youtube = this.createYouTubeClient()
+      if (!youtube) {
+        throw new Error('No valid YouTube API keys available')
+      }
+
+      try {
+        const result = await operation(youtube)
+        console.log(`API 키 ${this.currentKeyIndex + 1} 사용 성공`)
+        return result
+      } catch (error: any) {
+        lastError = error
+        console.error(`API 키 ${this.currentKeyIndex + 1} 오류:`, error.message)
+        
+        if (this.handleQuotaExhausted(error)) {
+          continue // 다음 키로 시도
+        } else {
+          throw error // 할당량 문제가 아닌 다른 오류는 즉시 throw
+        }
+      }
+    }
+    
+    throw lastError || new Error('All API keys exhausted')
+  }
+
   async searchVideos(query: string, maxResults: number = 50): Promise<YouTubeVideo[]> {
-    if (!this.apiKey || !youtube) {
-      console.warn('YouTube API key not available, returning mock data')
-      return this.getMockVideos(query, maxResults)
+    // 캐시에서 먼저 확인
+    const cacheParams = { query, maxResults, type: 'videos' }
+    const cached = await this.cache.get<YouTubeVideo[]>('search', cacheParams)
+    if (cached) {
+      console.log('캐시에서 검색 결과 반환:', query)
+      return cached
+    }
+
+    if (this.apiKeys.length === 0) {
+      console.warn('No YouTube API keys available, returning mock data')
+      const mockData = this.getMockVideos(query, maxResults)
+      await this.cache.set('search', cacheParams, mockData, CACHE_TTL.SEARCH)
+      return mockData
     }
 
     try {
-      const response = await youtube.search.list({
-        part: ['snippet'],
-        q: query,
-        type: ['video'],
-        maxResults,
-        order: 'relevance',
-        regionCode: 'KR',
-        relevanceLanguage: 'ko',
+      const response = await this.executeWithRetry(async (youtube) => {
+        return await youtube.search.list({
+          part: ['snippet'],
+          q: query,
+          type: ['video'],
+          maxResults,
+          order: 'relevance',
+          regionCode: 'KR',
+          relevanceLanguage: 'ko',
+        })
       })
 
       if (!response.data.items) return []
@@ -52,23 +138,31 @@ export class YouTubeService {
       const videoIds = response.data.items.map(item => item.id?.videoId).filter(Boolean)
       const videoDetails = await this.getVideoDetails(videoIds as string[])
 
+      // 결과를 캐시에 저장 (30분)
+      await this.cache.set('search', cacheParams, videoDetails, CACHE_TTL.SEARCH)
+      console.log('검색 결과를 캐시에 저장:', query)
+
       return videoDetails
     } catch (error) {
       console.error('Error searching videos:', error)
       console.warn('Falling back to mock data')
-      return this.getMockVideos(query, maxResults)
+      const mockData = this.getMockVideos(query, maxResults)
+      await this.cache.set('search', cacheParams, mockData, CACHE_TTL.SEARCH)
+      return mockData
     }
   }
 
   async getVideoDetails(videoIds: string[]): Promise<YouTubeVideo[]> {
-    if (!youtube) {
+    if (this.apiKeys.length === 0) {
       return []
     }
 
     try {
-      const response = await youtube.videos.list({
-        part: ['snippet', 'statistics', 'contentDetails'],
-        id: videoIds,
+      const response = await this.executeWithRetry(async (youtube) => {
+        return await youtube.videos.list({
+          part: ['snippet', 'statistics', 'contentDetails'],
+          id: videoIds,
+        })
       })
 
       if (!response.data.items) return []
@@ -95,14 +189,16 @@ export class YouTubeService {
   }
 
   async getChannelDetails(channelId: string): Promise<YouTubeChannel | null> {
-    if (!youtube) {
+    if (this.apiKeys.length === 0) {
       return null
     }
 
     try {
-      const response = await youtube.channels.list({
-        part: ['snippet', 'statistics'],
-        id: [channelId],
+      const response = await this.executeWithRetry(async (youtube) => {
+        return await youtube.channels.list({
+          part: ['snippet', 'statistics'],
+          id: [channelId],
+        })
       })
 
       if (!response.data.items || response.data.items.length === 0) {
@@ -129,22 +225,32 @@ export class YouTubeService {
   }
 
   async getTrendingVideos(regionCode: string = 'KR', maxResults: number = 50): Promise<TrendingVideo[]> {
-    if (!this.apiKey || !youtube) {
-      console.warn('YouTube API key not available, returning mock trending data')
+    // 캐시에서 먼저 확인
+    const cacheParams = { regionCode, maxResults }
+    const cached = await this.cache.get<TrendingVideo[]>('trending', cacheParams)
+    if (cached) {
+      console.log('캐시에서 트렌딩 데이터 반환:', regionCode)
+      return cached
+    }
+
+    if (this.apiKeys.length === 0) {
+      console.warn('No YouTube API keys available, returning mock trending data')
       return this.getMockTrendingVideos(regionCode, maxResults)
     }
 
     try {
-      const response = await youtube.videos.list({
-        part: ['snippet', 'statistics'],
-        chart: 'mostPopular',
-        regionCode,
-        maxResults,
+      const response = await this.executeWithRetry(async (youtube) => {
+        return await youtube.videos.list({
+          part: ['snippet', 'statistics'],
+          chart: 'mostPopular',
+          regionCode,
+          maxResults,
+        })
       })
 
       if (!response.data.items) return []
 
-      return response.data.items.map((item, index) => ({
+      const trendingVideos = response.data.items.map((item, index) => ({
         id: item.id!,
         title: item.snippet?.title || '',
         description: item.snippet?.description || undefined,
@@ -161,6 +267,12 @@ export class YouTubeService {
         trendingDate: new Date().toISOString(),
         region: regionCode,
       }))
+
+      // 결과를 캐시에 저장 (1시간)
+      await this.cache.set('trending', cacheParams, trendingVideos, CACHE_TTL.TRENDING)
+      console.log('트렌딩 데이터를 캐시에 저장:', regionCode)
+
+      return trendingVideos
     } catch (error) {
       console.error('Error getting trending videos:', error)
       console.warn('Falling back to mock trending data')
@@ -169,24 +281,40 @@ export class YouTubeService {
   }
 
   async getChannelVideos(channelId: string, maxResults: number = 50): Promise<YouTubeVideo[]> {
-    if (!this.apiKey || !youtube) {
-      console.warn('YouTube API key not available, returning mock channel videos')
+    // 캐시에서 먼저 확인
+    const cacheParams = { channelId, maxResults }
+    const cached = await this.cache.get<YouTubeVideo[]>('channelVideos', cacheParams)
+    if (cached) {
+      console.log('캐시에서 채널 비디오 반환:', channelId)
+      return cached
+    }
+
+    if (this.apiKeys.length === 0) {
+      console.warn('No YouTube API keys available, returning mock channel videos')
       return this.getMockChannelVideos(channelId, maxResults)
     }
 
     try {
-      const response = await youtube.search.list({
-        part: ['snippet'],
-        channelId,
-        type: ['video'],
-        maxResults,
-        order: 'date',
+      const response = await this.executeWithRetry(async (youtube) => {
+        return await youtube.search.list({
+          part: ['snippet'],
+          channelId,
+          type: ['video'],
+          maxResults,
+          order: 'date',
+        })
       })
 
       if (!response.data.items) return []
 
       const videoIds = response.data.items.map(item => item.id?.videoId).filter(Boolean)
-      return await this.getVideoDetails(videoIds as string[])
+      const channelVideos = await this.getVideoDetails(videoIds as string[])
+
+      // 결과를 캐시에 저장 (2시간)
+      await this.cache.set('channelVideos', cacheParams, channelVideos, CACHE_TTL.CHANNEL_VIDEOS)
+      console.log('채널 비디오를 캐시에 저장:', channelId)
+
+      return channelVideos
     } catch (error) {
       console.error('Error getting channel videos:', error)
       console.warn('Falling back to mock channel videos')
@@ -195,19 +323,31 @@ export class YouTubeService {
   }
 
   async searchChannels(query: string, maxResults: number = 25): Promise<YouTubeChannel[]> {
-    if (!this.apiKey || !youtube) {
-      console.warn('YouTube API key not available, returning mock channels')
-      return this.getMockChannels(query, maxResults)
+    // 캐시에서 먼저 확인
+    const cacheParams = { query, maxResults, type: 'channels' }
+    const cached = await this.cache.get<YouTubeChannel[]>('search', cacheParams)
+    if (cached) {
+      console.log('캐시에서 채널 검색 결과 반환:', query)
+      return cached
+    }
+
+    if (this.apiKeys.length === 0) {
+      console.warn('No YouTube API keys available, returning mock channels')
+      const mockData = this.getMockChannels(query, maxResults)
+      await this.cache.set('search', cacheParams, mockData, CACHE_TTL.SEARCH)
+      return mockData
     }
 
     try {
-      const response = await youtube.search.list({
-        part: ['snippet'],
-        q: query,
-        type: ['channel'],
-        maxResults,
-        order: 'relevance',
-        regionCode: 'KR',
+      const response = await this.executeWithRetry(async (youtube) => {
+        return await youtube.search.list({
+          part: ['snippet'],
+          q: query,
+          type: ['channel'],
+          maxResults,
+          order: 'relevance',
+          regionCode: 'KR',
+        })
       })
 
       if (!response.data.items) return []
@@ -222,11 +362,17 @@ export class YouTubeService {
         }
       }
 
+      // 결과를 캐시에 저장 (30분)
+      await this.cache.set('search', cacheParams, channels, CACHE_TTL.SEARCH)
+      console.log('채널 검색 결과를 캐시에 저장:', query)
+
       return channels
     } catch (error) {
       console.error('Error searching channels:', error)
       console.warn('Falling back to mock channels')
-      return this.getMockChannels(query, maxResults)
+      const mockData = this.getMockChannels(query, maxResults)
+      await this.cache.set('search', cacheParams, mockData, CACHE_TTL.SEARCH)
+      return mockData
     }
   }
 

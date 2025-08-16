@@ -30,6 +30,7 @@
     "@types/node": "^24.2.1",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
+    "@vercel/kv": "^3.0.0",
     "autoprefixer": "^10.4.21",
     "axios": "^1.11.0",
     "date-fns": "^4.1.0",
@@ -45,6 +46,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "recharts": "^3.1.2",
+    "redis": "^5.8.1",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.9.2"
   }

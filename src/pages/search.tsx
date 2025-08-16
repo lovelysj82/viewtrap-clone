@@ -18,6 +18,7 @@ export default function Search() {
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([])
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+  const [preventAutoComplete, setPreventAutoComplete] = useState(false)
 
   // 인기 검색 키워드 및 문구 목록 (useMemo로 최적화)
   const popularKeywords = useMemo(() => [
@@ -179,7 +180,7 @@ export default function Search() {
       }
     }
 
-    if (inputQuery.trim().length > 0) {
+    if (inputQuery.trim().length > 0 && !preventAutoComplete) {
       // 딜레이를 추가하여 너무 자주 API 호출하지 않도록 함
       const delayTimer = setTimeout(() => {
         fetchSuggestions(inputQuery.trim())
@@ -192,7 +193,12 @@ export default function Search() {
       setSelectedSuggestionIndex(-1)
       setIsLoadingSuggestions(false)
     }
-  }, [inputQuery, getLocalSuggestions])
+    
+    // preventAutoComplete 플래그가 설정되어 있다면 다시 false로 설정
+    if (preventAutoComplete) {
+      setPreventAutoComplete(false)
+    }
+  }, [inputQuery, getLocalSuggestions, preventAutoComplete])
 
   const { data: searchResults, isLoading, error } = useQuery({
     queryKey: ['search', searchQuery],
@@ -235,6 +241,8 @@ export default function Search() {
   }
 
   const handleRecentSearch = (query: string) => {
+    // 자동완성 방지 플래그 설정
+    setPreventAutoComplete(true)
     setInputQuery(query)
     setSearchQuery(query)
     // 최근 검색어 클릭 시 자동완성 숨기기
