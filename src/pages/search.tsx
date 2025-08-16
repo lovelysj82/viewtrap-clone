@@ -266,42 +266,54 @@ export default function Search() {
     }
   }
 
-  const handleRecentSearch = (query: string) => {
+  const handleRecentSearch = (e: React.MouseEvent, query: string) => {
+    // 이벤트 전파 완전 차단
+    e.preventDefault()
+    e.stopPropagation()
+    e.stopImmediatePropagation()
+    
     console.log('Recent search clicked:', query)
     
-    // 1. 즉시 모든 자동완성 차단
+    // 1. 즉시 모든 자동완성 차단 (더 강력한 방식)
     setShowSuggestions(false)
     setFilteredSuggestions([])
     setSelectedSuggestionIndex(-1)
     setIsLoadingSuggestions(false)
     
-    // 2. input을 잠시 readOnly로 만들어 change 이벤트 차단
-    setInputReadOnly(true)
+    // 2. input을 blur 처리하여 포커스 제거
+    const inputElement = document.querySelector('input[type="text"]') as HTMLInputElement
+    if (inputElement) {
+      inputElement.blur()
+    }
     
-    // 3. 모든 플래그 설정
+    // 3. 모든 플래그 설정 (더 오래 유지)
     isRecentSearchClick.current = true
     setPreventAutoComplete(true)
     skipNextEffect.current = true
+    setInputReadOnly(true)
     
-    // 4. 검색 실행
-    setSearchQuery(query)
-    saveSearch(query)
-    
-    // 5. input 값 설정 (readOnly 상태에서)
+    // 4. input 값 먼저 설정 (즉시)
     setInputQuery(query)
     
-    // 6. 200ms 후 readOnly 해제 및 플래그 유지
+    // 5. 100ms 후 검색 실행 (약간의 지연으로 안정성 확보)
+    setTimeout(() => {
+      setSearchQuery(query)
+      saveSearch(query)
+    }, 100)
+    
+    // 6. 500ms 후 readOnly 해제 (더 길게)
     setTimeout(() => {
       setInputReadOnly(false)
-    }, 200)
+      console.log('ReadOnly disabled after recent search')
+    }, 500)
     
-    // 7. 3초 후 모든 플래그 완전 해제
+    // 7. 5초 후 모든 플래그 완전 해제 (더 길게)
     setTimeout(() => {
-      console.log('Flags cleared after recent search')
+      console.log('All flags cleared after recent search')
       setPreventAutoComplete(false)
       isRecentSearchClick.current = false
       skipNextEffect.current = false
-    }, 3000)
+    }, 5000)
   }
 
   const handleVideoClick = (videoId: string, title: string) => {
@@ -327,27 +339,37 @@ export default function Search() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
-    console.log('Input change:', newValue, 'readOnly:', inputReadOnly, 'isRecent:', isRecentSearchClick.current)
+    console.log('Input change:', newValue, 'readOnly:', inputReadOnly, 'isRecent:', isRecentSearchClick.current, 'preventAuto:', preventAutoComplete)
     
-    // readOnly 상태에서는 change 이벤트가 발생하지 않아야 하지만, 혹시 모르니 차단
-    if (inputReadOnly || isRecentSearchClick.current) {
-      console.log('Input change blocked')
+    // 최근 검색어 처리 중이거나 자동완성 차단 중이면 완전 무시
+    if (inputReadOnly || isRecentSearchClick.current || preventAutoComplete) {
+      console.log('Input change completely blocked')
+      e.preventDefault()
+      e.stopPropagation()
       return
     }
     
     setInputQuery(newValue)
     
-    // 사용자가 직접 타이핑하는 경우 모든 플래그 해제
-    if (preventAutoComplete) {
-      console.log('User typing detected, clearing flags')
-      setPreventAutoComplete(false)
-      isRecentSearchClick.current = false
-      skipNextEffect.current = false
-    }
+    // 사용자가 직접 타이핑하는 경우에만 플래그 해제
+    console.log('User typing detected, clearing flags if needed')
   }
 
   const handleInputFocus = () => {
-    if (inputQuery.trim().length > 0 && filteredSuggestions.length > 0 && !isRecentSearchClick.current && !preventAutoComplete) {
+    console.log('Input focus event:', {
+      inputQuery: inputQuery.trim(),
+      isRecentSearchClick: isRecentSearchClick.current,
+      preventAutoComplete,
+      inputReadOnly
+    })
+    
+    // 최근 검색어 클릭 중이거나 자동완성이 차단된 상태면 무시
+    if (isRecentSearchClick.current || preventAutoComplete || inputReadOnly) {
+      console.log('Focus ignored due to flags')
+      return
+    }
+    
+    if (inputQuery.trim().length > 0 && filteredSuggestions.length > 0) {
       setShowSuggestions(true)
     }
   }
@@ -483,7 +505,7 @@ export default function Search() {
                 {recentSearches.map((recent, index) => (
                   <button
                     key={index}
-                    onClick={() => handleRecentSearch(recent)}
+                    onClick={(e) => handleRecentSearch(e, recent)}
                     className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
                   >
                     {recent}
@@ -710,7 +732,7 @@ export default function Search() {
               ].map((keyword) => (
                 <button
                   key={keyword}
-                  onClick={() => handleRecentSearch(keyword)}
+                  onClick={(e) => handleRecentSearch(e, keyword)}
                   className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm transition-colors"
                 >
                   {keyword}
