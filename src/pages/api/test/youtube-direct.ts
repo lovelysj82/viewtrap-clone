@@ -28,11 +28,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       itemsCount: response.data.items?.length || 0,
       firstItem: response.data.items?.[0] || null
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorObj = error as { message?: string; errors?: unknown[] }
     res.status(500).json({
       success: false,
-      error: error.message,
-      details: error.errors?.[0] || null
+      error: errorObj.message,
+      details: errorObj.errors?.[0] || null
     })
   }
 }

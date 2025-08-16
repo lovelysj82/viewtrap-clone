@@ -66,7 +66,7 @@ export class YouTubeService {
     }
   }
 
-  private handleQuotaExhausted(error: any): boolean {
+  private handleQuotaExhausted(error: { message?: string }): boolean {
     if (error.message?.includes('quota') || error.message?.includes('exceeded')) {
       console.log(`API 키 ${this.currentKeyIndex + 1}의 할당량이 초과되었습니다. 다음 키로 전환합니다.`)
       this.keyQuotaExhausted.add(this.currentKeyIndex)
@@ -77,7 +77,7 @@ export class YouTubeService {
   }
 
   private async executeWithRetry<T>(operation: (youtube: ReturnType<typeof google.youtube>) => Promise<T>): Promise<T> {
-    let lastError: any
+    let lastError: Error | unknown
     
     for (let attempt = 0; attempt < this.apiKeys.length; attempt++) {
       const youtube = this.createYouTubeClient()
@@ -89,11 +89,12 @@ export class YouTubeService {
         const result = await operation(youtube)
         console.log(`API 키 ${this.currentKeyIndex + 1} 사용 성공`)
         return result
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorObj = error as { message?: string }
         lastError = error
-        console.error(`API 키 ${this.currentKeyIndex + 1} 오류:`, error.message)
+        console.error(`API 키 ${this.currentKeyIndex + 1} 오류:`, errorObj.message)
         
-        if (this.handleQuotaExhausted(error)) {
+        if (this.handleQuotaExhausted(errorObj)) {
           continue // 다음 키로 시도
         } else {
           throw error // 할당량 문제가 아닌 다른 오류는 즉시 throw

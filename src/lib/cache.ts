@@ -7,7 +7,7 @@ interface CacheItem<T> {
   ttl: number
 }
 
-const memoryCache = new Map<string, CacheItem<any>>()
+const memoryCache = new Map<string, CacheItem<unknown>>()
 
 export class CacheService {
   private static instance: CacheService
@@ -35,7 +35,7 @@ export class CacheService {
   }
 
   // 캐시 키 생성
-  private getCacheKey(type: string, params: Record<string, any>): string {
+  private getCacheKey(type: string, params: Record<string, unknown>): string {
     const paramString = Object.keys(params)
       .sort()
       .map(key => `${key}:${params[key]}`)
@@ -44,12 +44,12 @@ export class CacheService {
   }
 
   // 캐시에서 데이터 가져오기
-  async get<T>(type: string, params: Record<string, any>): Promise<T | null> {
+  async get<T>(type: string, params: Record<string, unknown>): Promise<T | null> {
     const key = this.getCacheKey(type, params)
     
     // 인메모리 캐시 먼저 확인 (개발용)
     if (this.useMemoryCache) {
-      const cached = memoryCache.get(key)
+      const cached = memoryCache.get(key) as CacheItem<T> | undefined
       if (cached) {
         const now = Date.now()
         if (now - cached.timestamp > cached.ttl * 1000) {
@@ -102,7 +102,7 @@ export class CacheService {
   // 캐시에 데이터 저장
   async set<T>(
     type: string, 
-    params: Record<string, any>, 
+    params: Record<string, unknown>, 
     data: T, 
     ttlSeconds: number = 3600
   ): Promise<void> {
@@ -149,7 +149,7 @@ export class CacheService {
   }
 
   // 캐시 삭제
-  async delete(type: string, params: Record<string, any>): Promise<void> {
+  async delete(type: string, params: Record<string, unknown>): Promise<void> {
     if (!this.isKvAvailable) {
       return
     }

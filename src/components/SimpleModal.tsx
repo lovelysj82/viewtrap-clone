@@ -11,7 +11,13 @@ const SimpleModal: React.FC<SimpleModalProps> = ({ isOpen, onClose, videoId, tit
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
-  if (!isOpen) return null
+  // 모달이 열릴 때마다 상태 초기화
+  React.useEffect(() => {
+    if (isOpen) {
+      setIsLoading(true)
+      setHasError(false)
+    }
+  }, [isOpen, videoId])
 
   const handleIframeLoad = () => {
     setIsLoading(false)
@@ -23,13 +29,7 @@ const SimpleModal: React.FC<SimpleModalProps> = ({ isOpen, onClose, videoId, tit
     setHasError(true)
   }
 
-  // 모달이 열릴 때마다 상태 초기화
-  React.useEffect(() => {
-    if (isOpen) {
-      setIsLoading(true)
-      setHasError(false)
-    }
-  }, [isOpen, videoId])
+  if (!isOpen) return null
 
   return (
     <div 
