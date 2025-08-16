@@ -181,10 +181,22 @@ export default function Search() {
       }
     }
 
-    if (inputQuery.trim().length > 0 && !preventAutoComplete && !isRecentSearchClick.current) {
+    // 최근 검색어나 인기 검색어 클릭 시 자동완성 완전 차단
+    if (isRecentSearchClick.current || preventAutoComplete) {
+      setShowSuggestions(false)
+      setFilteredSuggestions([])
+      setSelectedSuggestionIndex(-1)
+      setIsLoadingSuggestions(false)
+      return
+    }
+
+    if (inputQuery.trim().length > 0) {
       // 딜레이를 추가하여 너무 자주 API 호출하지 않도록 함
       const delayTimer = setTimeout(() => {
-        fetchSuggestions(inputQuery.trim())
+        // 다시 한번 플래그 확인
+        if (!isRecentSearchClick.current && !preventAutoComplete) {
+          fetchSuggestions(inputQuery.trim())
+        }
       }, 300)
 
       return () => clearTimeout(delayTimer)
@@ -193,13 +205,6 @@ export default function Search() {
       setFilteredSuggestions([])
       setSelectedSuggestionIndex(-1)
       setIsLoadingSuggestions(false)
-      
-      // 최근 검색어 클릭 플래그 리셋
-      if (isRecentSearchClick.current) {
-        setTimeout(() => {
-          isRecentSearchClick.current = false
-        }, 100)
-      }
     }
   }, [inputQuery, getLocalSuggestions, preventAutoComplete])
 
@@ -248,21 +253,26 @@ export default function Search() {
     isRecentSearchClick.current = true
     setPreventAutoComplete(true)
     
-    // 즉시 자동완성 관련 상태 모두 초기화
+    // 즉시 자동완성 관련 상태 모두 초기화 및 숨김
     setShowSuggestions(false)
     setFilteredSuggestions([])
     setSelectedSuggestionIndex(-1)
     setIsLoadingSuggestions(false)
     
-    // 검색 실행
-    setInputQuery(query)
+    // 먼저 검색 실행
     setSearchQuery(query)
+    saveSearch(query)
     
-    // 1초 후에 모든 플래그 해제
+    // 그 다음에 input 값 설정 (순서 중요!)
+    setTimeout(() => {
+      setInputQuery(query)
+    }, 50)
+    
+    // 1.5초 후에 모든 플래그 해제
     setTimeout(() => {
       setPreventAutoComplete(false)
       isRecentSearchClick.current = false
-    }, 1000)
+    }, 1500)
   }
 
   const handleVideoClick = (videoId: string, title: string) => {
@@ -296,7 +306,7 @@ export default function Search() {
   }
 
   const handleInputFocus = () => {
-    if (inputQuery.trim().length > 0 && filteredSuggestions.length > 0) {
+    if (inputQuery.trim().length > 0 && filteredSuggestions.length > 0 && !isRecentSearchClick.current && !preventAutoComplete) {
       setShowSuggestions(true)
     }
   }
@@ -382,7 +392,7 @@ export default function Search() {
             </div>
             
             {/* 자동완성 드롭다운 */}
-            {(showSuggestions || isLoadingSuggestions) && (
+            {(showSuggestions || isLoadingSuggestions) && !isRecentSearchClick.current && !preventAutoComplete && (
               <div className="absolute top-full left-0 right-12 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                 {isLoadingSuggestions ? (
                   <div className="px-4 py-3 text-gray-500 text-center">
