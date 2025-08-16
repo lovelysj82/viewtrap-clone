@@ -282,11 +282,20 @@ export class YouTubeService {
   }
 
   async getChannelVideos(channelId: string, maxResults: number = 50): Promise<YouTubeVideo[]> {
+    console.log('채널 비디오 요청:', channelId, 'maxResults:', maxResults)
+    
     // 캐시에서 먼저 확인
     const cacheParams = { channelId, maxResults }
     const cached = await this.cache.get<YouTubeVideo[]>('channelVideos', cacheParams)
     if (cached) {
-      console.log('캐시에서 채널 비디오 반환:', channelId)
+      console.log('캐시에서 채널 비디오 반환:', channelId, '개수:', cached.length)
+      // 캐시된 데이터가 올바른 채널의 것인지 검증
+      const correctChannelVideos = cached.filter(video => video.channelId === channelId)
+      if (correctChannelVideos.length !== cached.length) {
+        console.warn('캐시된 데이터에 다른 채널의 영상이 포함됨. 캐시 삭제 후 재요청.')
+        await this.cache.delete('channelVideos', cacheParams)
+        return this.getChannelVideos(channelId, maxResults)
+      }
       return cached
     }
 
@@ -311,13 +320,23 @@ export class YouTubeService {
       if (!response.data.items) return []
 
       const videoIds = response.data.items.map(item => item.id?.videoId).filter(Boolean)
+      console.log('검색된 비디오 ID들:', videoIds.length, '개')
+      
       const channelVideos = await this.getVideoDetails(videoIds as string[])
+      console.log('비디오 상세 정보 가져옴:', channelVideos.length, '개')
+      
+      // 채널 ID 검증
+      const correctChannelVideos = channelVideos.filter(video => video.channelId === channelId)
+      if (correctChannelVideos.length !== channelVideos.length) {
+        console.warn(`채널 ${channelId}에 대한 검색 결과에 다른 채널의 영상이 포함됨`)
+        console.warn('올바른 채널 영상:', correctChannelVideos.length, '전체:', channelVideos.length)
+      }
 
-      // 결과를 캐시에 저장 (2시간)
-      await this.cache.set('channelVideos', cacheParams, channelVideos, CACHE_TTL.CHANNEL_VIDEOS)
-      console.log('채널 비디오를 캐시에 저장:', channelId)
+      // 결과를 캐시에 저장 (2시간) - 올바른 채널의 영상만
+      await this.cache.set('channelVideos', cacheParams, correctChannelVideos, CACHE_TTL.CHANNEL_VIDEOS)
+      console.log('채널 비디오를 캐시에 저장:', channelId, '개수:', correctChannelVideos.length)
 
-      return channelVideos
+      return correctChannelVideos
     } catch (error) {
       console.error('Error getting channel videos:', error)
       console.warn('Falling back to mock channel videos')

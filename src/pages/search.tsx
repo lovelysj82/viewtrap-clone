@@ -156,14 +156,28 @@ export default function Search() {
 
   // 실제 YouTube 자동완성 API 호출
   useEffect(() => {
+    console.log('useEffect triggered:', {
+      inputQuery,
+      skipNextEffect: skipNextEffect.current,
+      isRecentSearchClick: isRecentSearchClick.current,
+      preventAutoComplete,
+      inputReadOnly
+    })
+
     // 최근 검색어 클릭으로 인한 effect 실행이면 스킵
     if (skipNextEffect.current) {
+      console.log('Effect skipped due to skipNextEffect flag')
       skipNextEffect.current = false
       return
     }
 
     // 최근 검색어나 인기 검색어 클릭 시 자동완성 완전 차단
-    if (isRecentSearchClick.current || preventAutoComplete) {
+    if (isRecentSearchClick.current || preventAutoComplete || inputReadOnly) {
+      console.log('Effect blocked due to flags:', {
+        isRecentSearchClick: isRecentSearchClick.current,
+        preventAutoComplete,
+        inputReadOnly
+      })
       setShowSuggestions(false)
       setFilteredSuggestions([])
       setSelectedSuggestionIndex(-1)
@@ -273,46 +287,44 @@ export default function Search() {
     
     console.log('Recent search clicked:', query)
     
-    // 1. 즉시 모든 자동완성 차단 (더 강력한 방식)
+    // 1. 모든 플래그를 즉시 그리고 강력하게 설정
+    isRecentSearchClick.current = true
+    setPreventAutoComplete(true)
+    skipNextEffect.current = true
+    
+    // 2. 자동완성 관련 모든 상태 즉시 차단
     setShowSuggestions(false)
     setFilteredSuggestions([])
     setSelectedSuggestionIndex(-1)
     setIsLoadingSuggestions(false)
     
-    // 2. input을 blur 처리하여 포커스 제거
+    // 3. input 포커스 제거
     const inputElement = document.querySelector('input[type="text"]') as HTMLInputElement
     if (inputElement) {
       inputElement.blur()
     }
     
-    // 3. 모든 플래그 설정 (더 오래 유지)
-    isRecentSearchClick.current = true
-    setPreventAutoComplete(true)
-    skipNextEffect.current = true
+    // 4. input을 임시로 비활성화 (더 강력한 차단)
     setInputReadOnly(true)
     
-    // 4. input 값 먼저 설정 (즉시)
+    // 5. 즉시 검색어 설정 및 검색 실행
     setInputQuery(query)
+    setSearchQuery(query)
+    saveSearch(query)
     
-    // 5. 100ms 후 검색 실행 (약간의 지연으로 안정성 확보)
-    setTimeout(() => {
-      setSearchQuery(query)
-      saveSearch(query)
-    }, 100)
-    
-    // 6. 500ms 후 readOnly 해제 (더 길게)
+    // 6. 1초 후 readOnly 해제 (더 안전하게)
     setTimeout(() => {
       setInputReadOnly(false)
       console.log('ReadOnly disabled after recent search')
-    }, 500)
+    }, 1000)
     
-    // 7. 5초 후 모든 플래그 완전 해제 (더 길게)
+    // 7. 10초 후 모든 플래그 해제 (매우 길게)
     setTimeout(() => {
       console.log('All flags cleared after recent search')
       setPreventAutoComplete(false)
       isRecentSearchClick.current = false
       skipNextEffect.current = false
-    }, 5000)
+    }, 10000)
   }
 
   const handleVideoClick = (videoId: string, title: string) => {
