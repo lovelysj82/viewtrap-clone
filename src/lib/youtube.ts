@@ -128,7 +128,7 @@ export class YouTubeService {
           q: query,
           type: ['video'],
           maxResults,
-          order: 'relevance',
+          order: 'date',
           regionCode: 'KR',
           relevanceLanguage: 'ko',
         })

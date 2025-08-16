@@ -19,6 +19,7 @@ export default function Search() {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
   const [preventAutoComplete, setPreventAutoComplete] = useState(false)
+  const [hideAutoCompleteCompletely, setHideAutoCompleteCompletely] = useState(false)
   const isRecentSearchClick = useRef(false)
   const skipNextEffect = useRef(false)
   const [inputReadOnly, setInputReadOnly] = useState(false)
@@ -172,11 +173,12 @@ export default function Search() {
     }
 
     // 최근 검색어나 인기 검색어 클릭 시 자동완성 완전 차단
-    if (isRecentSearchClick.current || preventAutoComplete || inputReadOnly) {
+    if (isRecentSearchClick.current || preventAutoComplete || inputReadOnly || hideAutoCompleteCompletely) {
       console.log('Effect blocked due to flags:', {
         isRecentSearchClick: isRecentSearchClick.current,
         preventAutoComplete,
-        inputReadOnly
+        inputReadOnly,
+        hideAutoCompleteCompletely
       })
       setShowSuggestions(false)
       setFilteredSuggestions([])
@@ -238,7 +240,7 @@ export default function Search() {
       setSelectedSuggestionIndex(-1)
       setIsLoadingSuggestions(false)
     }
-  }, [inputQuery, getLocalSuggestions, preventAutoComplete])
+  }, [inputQuery, getLocalSuggestions])
 
   const { data: searchResults, isLoading, error } = useQuery({
     queryKey: ['search', searchQuery],
@@ -291,6 +293,7 @@ export default function Search() {
     isRecentSearchClick.current = true
     setPreventAutoComplete(true)
     skipNextEffect.current = true
+    setHideAutoCompleteCompletely(true)
     
     // 2. 자동완성 관련 모든 상태 즉시 차단
     setShowSuggestions(false)
@@ -322,6 +325,7 @@ export default function Search() {
     setTimeout(() => {
       console.log('All flags cleared after recent search')
       setPreventAutoComplete(false)
+      setHideAutoCompleteCompletely(false)
       isRecentSearchClick.current = false
       skipNextEffect.current = false
     }, 10000)
@@ -467,7 +471,7 @@ export default function Search() {
             </div>
             
             {/* 자동완성 드롭다운 */}
-            {(showSuggestions || isLoadingSuggestions) && !isRecentSearchClick.current && !preventAutoComplete && (
+            {(showSuggestions || isLoadingSuggestions) && !isRecentSearchClick.current && !preventAutoComplete && !hideAutoCompleteCompletely && (
               <div className="absolute top-full left-0 right-12 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
                 {isLoadingSuggestions ? (
                   <div className="px-4 py-3 text-gray-500 text-center">
