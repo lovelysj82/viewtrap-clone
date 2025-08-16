@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Head from 'next/head'
 import { useQuery } from '@tanstack/react-query'
 import { Search as SearchIcon, Eye, Heart, Users, Clock, Play } from 'lucide-react'
@@ -19,6 +19,7 @@ export default function Search() {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
   const [preventAutoComplete, setPreventAutoComplete] = useState(false)
+  const isRecentSearchClick = useRef(false)
 
   // 인기 검색 키워드 및 문구 목록 (useMemo로 최적화)
   const popularKeywords = useMemo(() => [
@@ -180,7 +181,7 @@ export default function Search() {
       }
     }
 
-    if (inputQuery.trim().length > 0 && !preventAutoComplete) {
+    if (inputQuery.trim().length > 0 && !preventAutoComplete && !isRecentSearchClick.current) {
       // 딜레이를 추가하여 너무 자주 API 호출하지 않도록 함
       const delayTimer = setTimeout(() => {
         fetchSuggestions(inputQuery.trim())
@@ -192,6 +193,13 @@ export default function Search() {
       setFilteredSuggestions([])
       setSelectedSuggestionIndex(-1)
       setIsLoadingSuggestions(false)
+      
+      // 최근 검색어 클릭 플래그 리셋
+      if (isRecentSearchClick.current) {
+        setTimeout(() => {
+          isRecentSearchClick.current = false
+        }, 100)
+      }
     }
   }, [inputQuery, getLocalSuggestions, preventAutoComplete])
 
@@ -236,18 +244,25 @@ export default function Search() {
   }
 
   const handleRecentSearch = (query: string) => {
-    // 자동완성 방지 플래그 설정 및 검색 실행
+    // 최근 검색어 클릭 플래그 설정
+    isRecentSearchClick.current = true
     setPreventAutoComplete(true)
-    setInputQuery(query)
-    setSearchQuery(query)
+    
+    // 즉시 자동완성 관련 상태 모두 초기화
     setShowSuggestions(false)
     setFilteredSuggestions([])
     setSelectedSuggestionIndex(-1)
+    setIsLoadingSuggestions(false)
     
-    // 500ms 후에 자동완성 플래그 해제 (검색 완료 후)
+    // 검색 실행
+    setInputQuery(query)
+    setSearchQuery(query)
+    
+    // 1초 후에 모든 플래그 해제
     setTimeout(() => {
       setPreventAutoComplete(false)
-    }, 500)
+      isRecentSearchClick.current = false
+    }, 1000)
   }
 
   const handleVideoClick = (videoId: string, title: string) => {
@@ -273,9 +288,10 @@ export default function Search() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputQuery(e.target.value)
-    // 사용자가 직접 타이핑하는 경우 자동완성 플래그 해제
-    if (preventAutoComplete) {
+    // 사용자가 직접 타이핑하는 경우 모든 플래그 해제
+    if (preventAutoComplete || isRecentSearchClick.current) {
       setPreventAutoComplete(false)
+      isRecentSearchClick.current = false
     }
   }
 

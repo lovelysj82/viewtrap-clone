@@ -292,7 +292,9 @@ export class YouTubeService {
 
     if (this.apiKeys.length === 0) {
       console.warn('No YouTube API keys available, returning mock channel videos')
-      return this.getMockChannelVideos(channelId, maxResults)
+      const mockData = this.getMockChannelVideos(channelId, maxResults)
+      await this.cache.set('channelVideos', cacheParams, mockData, CACHE_TTL.CHANNEL_VIDEOS)
+      return mockData
     }
 
     try {
@@ -319,7 +321,9 @@ export class YouTubeService {
     } catch (error) {
       console.error('Error getting channel videos:', error)
       console.warn('Falling back to mock channel videos')
-      return this.getMockChannelVideos(channelId, maxResults)
+      const mockData = this.getMockChannelVideos(channelId, maxResults)
+      await this.cache.set('channelVideos', cacheParams, mockData, CACHE_TTL.CHANNEL_VIDEOS)
+      return mockData
     }
   }
 
